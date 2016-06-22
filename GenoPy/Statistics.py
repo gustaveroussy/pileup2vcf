@@ -57,7 +57,7 @@ class Statistics(object):
 #         pass
         
     def printStatistics(self, type, stath):
-        '''WriteMe'''
+        '''Prints statistics'''
         # Attention à bien changer la référence, ici self désigne l'object pileup, il faut donc qu'un object statistics
         # soit créé dans l'object pileup, et que celui-ci soit utilisé.
 

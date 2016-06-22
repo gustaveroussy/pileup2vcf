@@ -3,7 +3,7 @@
 from GenoPy.Genomic import tempToObjects, Bin, getId
 
 class BinTemporaryObject(object):
-    '''WriteMe'''
+    '''This object holds information required during Bin calling.'''
     def __init__(self, binSizeMin, binSizeMax, binh, io):
         self.binSizeCounter = 1
         self.stack = []
@@ -23,7 +23,7 @@ class BinTemporaryObject(object):
         self.log = io.log
 
     def addBin(self):
-        '''WriteMe'''
+        '''Prints a bin into the bin file'''
         if (self.binSizeCounter > self.binSizeMin):
             if Binning.checkStackBedAppartenance(self.stack):
                 print >>self.binh, str(Bin(self.binSizeCounter, self.stack, self.id))
@@ -32,7 +32,7 @@ class BinTemporaryObject(object):
         self.reset()
             
     def reset(self):
-        '''WriteMe'''
+        '''Resets the BinTemporaryObject stack'''
         self.stack = [self.o]
         self.old_id = self.o.id
         self.binSizeCounter = 1
@@ -40,7 +40,8 @@ class BinTemporaryObject(object):
 
 
 class Binning(object):
-    '''WriteMe'''
+    '''Binning class
+    This class takes charge of binning.'''
     def __init__(self, binh, parameters):
         self.binh = binh
         self.parameters = parameters
@@ -48,7 +49,7 @@ class Binning(object):
         self.header = True
         
     def bin(self, depthProfileH, binDynamically=False):
-        '''WriteMe'''
+        '''Bins the depthProfile'''
         self.depthProfileH = depthProfileH
         # What we want:
         # Découper self.depthProfile(chr) par binSize, et découper par décrochage de depth (adaptation aux captures)
@@ -67,7 +68,7 @@ class Binning(object):
         t = BinTemporaryObject(binSizeMin, binSizeMax, self.binh, self.io)
         
         def binFeed():
-            '''WriteMe'''
+            '''Feeds data into bin method'''
             for k, v in self.depthProfileH.items():
                 for v2 in v.values():
                     yield v2
@@ -125,7 +126,7 @@ class Binning(object):
 
     @staticmethod
     def positionDrift(position, maxDrift=50):
-        '''WriteMe'''
+        '''Static method that detects position drifting in pileup files'''
         old_position = int(position.last_position)
         current_position = int(position.start)
         if (current_position - old_position > maxDrift):
@@ -134,12 +135,12 @@ class Binning(object):
 
     @staticmethod
     def checkBedAppartenance(position):
-        '''WriteMe'''
+        '''returns a boolean that states if a position is inside bed file'''
         return position.inBed
 
     @staticmethod
     def checkStackBedAppartenance(stack):
-        '''WriteMe'''
+        '''Checks if the current stack is inside bed as a whole (all positions are in bed)'''
         toReturn = True
         #print len(stack)
         if len(stack) == 0:
@@ -151,7 +152,8 @@ class Binning(object):
         return toReturn
         
     def printBinning(self, binningR):
-        '''WriteMe'''
+        '''Not used anymore. Used to perform segmentation and normalization 'CGH-like' on previously
+        called bins'''
         depth_array, gc_array = [], []
         for el in tempToObjects(binningR):
             #self.log(el, loglevel=2)
@@ -176,7 +178,7 @@ class Binning(object):
         plt.show()
 
     def alternateBinningPrinting(self, binningR):
-        '''WriteMe'''
+        '''Not used anymore. Used to display graphical representation of copy number profile'''
         a = defaultdict(list)
         for el in tempToObjects(binningR):
             a[el.id].append(el)

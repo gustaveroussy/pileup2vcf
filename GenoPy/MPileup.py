@@ -23,7 +23,9 @@ import sys
 ###############################################################################
 
 class MPileup(object):
-    '''WriteMe'''
+    '''MPileup class
+    This class takes charge of mpileup files. It is in charge of parsing each line of the mpileup file and
+    create Variant objects'''
     def __init__(self, file, dph, io, parameters, bed=None):
         self.log = io.log
         self.parameters = parameters

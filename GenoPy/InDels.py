@@ -5,7 +5,8 @@ from collections import deque
 from GenoPy.Bins import Binning
 
 class Indel(TempBin):
-    '''WriteMe'''
+    '''Indel class
+    This class is responsible for all Indels that are called by IndelDetector. '''
     def __init__(self, binObject, deltaDepthInit, deltaDepthFinal, deltaOfDelta, justAnotherDelta):
         listBinObject = str(binObject).split('\t')
         super(Indel, self).__init__(*listBinObject)
@@ -49,7 +50,7 @@ class Indel(TempBin):
             self.freq = 100 - (100 * float(self.initDepth) / float(self.binAvgDepth))
 
     def genotype(self, parameters):
-        '''WriteMe'''
+        '''Sets a proper genotype for InDels found by IndelDetector'''
         self.gt = '0/0'
         if self.freq > float(parameters['hetTreshold']):
             self.gt = '0/1'
@@ -59,7 +60,7 @@ class Indel(TempBin):
         return self
 
     def filterIt(self, parameters):
-        '''WriteMe'''
+        '''Applies various filters on Indel object'''
         #Apply various filters on indels
         # TODO
         if abs(self.deltaOfDelta) > int(parameters['maxDeltaDelta']):
@@ -92,7 +93,7 @@ class Indel(TempBin):
 
 
 class InDelDetector:
-    '''WriteMe'''
+    '''Holder class containing all Indels detected by scanForIndels function'''
     def __init__(self, bins):
         self.allIndels = []
         self.bins = bins
@@ -112,7 +113,10 @@ class InDelDetector:
         return self
 
 class IndelDeque():
-    '''WriteMe'''
+    '''Holds variables used by scanForIndels.
+    Scan for indels uses a deque and must be resettable. This object implements a reset method 
+    that makes it able to get some initial state without resetting everything (like self.goodCandidatesInDels), which
+    is necessary maintained to its state throughout scanning.'''
     def __init__(self):
         self.lastNucleotides = deque([])
         self.nonBed = False
@@ -145,7 +149,8 @@ class IndelDeque():
 
 
 def scanForIndels(parameters):
-    '''WriteMe'''
+    '''This function scans for InDels. 
+    This is inspired by Birama's functionnality. '''
     # Uses deque and uses a scan window of 50 (default, but changeable, parameters[IndelWindowLength]) nucleotides
     capturedBins = []
     indels = IndelDeque()

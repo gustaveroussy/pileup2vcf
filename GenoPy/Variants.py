@@ -389,7 +389,7 @@ class Variant(NewPosition):
         return '\n'.join(a)
 
     def getInfos(self):
-        '''WriteMe'''
+        '''Parses one line of mpileup files and stores information in self'''
         # Variables de travail
         deletion, insertion, self.totCount, ignoreNext, non_starting_deletion, size = 0, 0, 0, 0, 0, 0
         numeric = recompile('[0-9]')
@@ -502,7 +502,7 @@ class Variant(NewPosition):
 
     # Cette fonction permet de compter les évenements sur le brin sens et anti-sens, ainsi que les InDels
     def computeNucCount(self):
-        '''WriteMe'''
+        '''this method counts nuclotides in order to enable further frequency computation'''
         for el in ["A", "T", "C", "G", "N"]:
             nucCount = 0
             nucCount += self.reverse[el]
@@ -520,7 +520,7 @@ class Variant(NewPosition):
 
     # Cette fonction permet de calculer la fréquence de chaque évenement.
     def computeFreq(self):
-        '''WriteMe'''
+        '''Compute variant frequency'''
         self.computeNucCount()
         try:
             self.refFreq = 100 * float(self.refCount) / float(self.totCount)
@@ -537,7 +537,10 @@ class Variant(NewPosition):
 
     # Cette fonction permet de choisir un variant ou de filtrer le variant.
     def call(self):
-        '''WriteMe'''
+        '''Call a variant.
+        This method is intended to classify Allele objects for a variant. It calls
+        the internal method _genotypeVariant in order to get a proper genotype between
+        valid Alleles'''
         # Le variant choisi aura la plus haute fréquence.
         #highestFreq = '',0
         #bestFreqDel = '', 0
@@ -673,9 +676,11 @@ class Variant(NewPosition):
             return self.calledAlleles
 
     def _genotypeVariant(self, ref, good, filtered, switch):
-        '''WriteMe'''
+        '''Allows to get a proper genotype for a variant. It also computes the quality score
+        returned for a single position (this is to be modified once I'll get a better quality
+        score metric)'''
         def alleleChooser(ref, good):
-            '''WriteMe'''
+            '''This method is intended to return a proper genotype given Alleles objects'''
             temp_array = []
             temp_array.append(ref)
             hetTreshold = self.parameters['hetTreshold']
@@ -706,7 +711,7 @@ class Variant(NewPosition):
             return '/'.join(markHet)
 
         def postProcessRefAlt(ref, alts):
-            '''WriteMe'''
+            '''This method is intended to reformat InDels ref and alt nucs.'''
             # This snippet was provided to me by Jeremie Pagnac - IGR - 2015
             # Yannick Boursin corrected a bug in InDel display
             alts = alts.split(',')
@@ -826,7 +831,8 @@ class Variant(NewPosition):
             self.calledQuality = 0
 
     def getLocalSequenceContext(self):
-        """This function intends to return the genomic context of the variant."""
+        """This function intends to return the genomic context of the variant.
+        Unused for now."""
         ## 1) Adéquation des fréquences nucléotidiques.
         context = self.context
         biggerContext = self.biggerContext
@@ -896,7 +902,8 @@ class Variant(NewPosition):
             pass ## Here should be continued
 
     def getLocalFilterState(self):
-        '''WriteMe'''
+        '''This method returns the local filter state and applies various filtering methods.
+        StrandBias, Frequency, Alternate reads number, Fisher test for Strand Bias, Quality'''
         passFilter = True
         self.failedLocFilters = []
 
@@ -941,7 +948,7 @@ class Variant(NewPosition):
         return passFilter
 
     def computeIndelFreq(self, indel):
-        '''WriteMe'''
+        '''Computes frequencies for InDels'''
         bestFreq = '', 0
         indelList = []
         if (indel == 'ins'):
@@ -964,7 +971,7 @@ class Variant(NewPosition):
 
     # Cette fonction calcule l'équilibre entre le brin sens et non sens. Elle donne une mesure de strand bias.
     def computeStrandBias(self):
-        '''WriteMe'''
+        '''Computes strand bias (percentage)'''
         self.fw = 0
         self.rv = 0
         for el in ["A", "T", "C", "G", "N"]:
@@ -982,7 +989,7 @@ class Variant(NewPosition):
         return ratio1
 
     def titv(self, alt=None):
-        '''WriteMe'''
+        '''Returns variant type (ti, tv, del, ins)'''
         ref = self.reference
         if alt is None:
             alt = self.majorAllele.Allele
@@ -998,7 +1005,7 @@ class Variant(NewPosition):
             return 'tv'
 
     def statsAllAllele(self, type="good"):
-        '''WriteMe'''
+        '''Intended to keep an eye on all alleles in statistics'''
         titvAll = []
         if type == "Good":
             for allele in self.goodAlleles:
@@ -1016,7 +1023,7 @@ class Variant(NewPosition):
 
     # Cette fonction effectue le test de Fisher exact entre la référence et les alternatifs. Elle donne une mesure de strand bias.
     def computeFisherStrandBias(self, allele=""):
-        '''WriteMe'''
+        '''Computes fisher test for strand bias either globally or locally'''
         # On créé la table de contingence
         #print allele
         if (allele != ""):
@@ -1041,7 +1048,7 @@ class Variant(NewPosition):
         return fi.computeFisher(forwardRef, reverseRef, forwardAlt, reverseAlt)
 
     def isVariant(self):
-        '''WriteMe'''
+        '''Returns True if the position is a variant.'''
         self.computeFreq()
         if self.globalVarFreq == 0 or int(self.totCount == 0):
             if float(self.frequencies["del"]) == 0:
@@ -1050,7 +1057,7 @@ class Variant(NewPosition):
 
     # Cette fonction permet de définir l'état filtré ou présent du variant. Tout nouveau filtre doit y être enregistré.
     def getGlobalFilterState(self):
-        '''WriteMe'''
+        '''In charge for applying global filters on a position (without considering a specific allele)'''
         # Define Parameters
         minFreq = self.parameters['minFreq']
         minDepth = self.parameters['minDepth']
@@ -1093,12 +1100,12 @@ class Variant(NewPosition):
     # Les fonctions suivantes servent à afficher des informations.
     # Fonction d'affichage des informations de base.
     def getBaseInformations(self):
-        '''WriteMe'''
+        '''Does what it says'''
         return "{0}\t{1}\t{2}\t{3}".format(self.chr, self.start, self.refNuc, self.totCount)
 
     # Fonction d'affichage des fréquences de chaque nucléotide.
     def getFrequencies(self):
-        '''WriteMe'''
+        '''Returns a frequency / absolute nucleotide count string'''
         return "{0:.2f}%[{1}]\t{2:.2f}%[{3}]\t{4:.2f}%[{5}]\t{6:.2f}%[{7}]\t{8:.2f}%[{9}]".format(self.frequencies["A"],
                                                                                             self.nucCount["A"],
                                                                                             self.frequencies["T"],
@@ -1112,7 +1119,7 @@ class Variant(NewPosition):
 
     # Fonction d'affichage des InDels
     def getInDels(self):
-        '''WriteMe'''
+        '''Old function that intended to display indels'''
         toReturn = ""
         deletions0 = []
         insertions0 = []

@@ -1,7 +1,8 @@
 # encoding: utf-8
 
 class VCF(object):
-    '''WriteMe'''
+    '''VCF class
+    This class is intended to take in charge VCF output format.'''
     def __init__(self, collection, parameters, indelsToAdd=None):
         self.collection = collection
         self.parameters = parameters
@@ -9,7 +10,10 @@ class VCF(object):
         
     #Fonction permettant de switcher à un affichage VCF
     def printVCF(self, fh,  printHeader=False):
-        '''WriteMe'''
+        '''Prints a VCF file using variant in collections. This distinguishes variants from two origins:
+        - trash
+        - good
+        It also adds indels detected by IndelDetector at the end (again distinguishing between good and trash)'''
         if self.collection.isTrash:
             if (printHeader):
                 print >>fh, '##fileformat=VCFv4.2'
