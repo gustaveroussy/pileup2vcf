@@ -1,0 +1,37 @@
+#Yolo maker
+from argparse import ArgumentParser
+from collections import defaultdict
+
+
+print >>sys.stdout, "Command line:", sys.argv
+parser = ArgumentParser()
+parser.add_argument("-i", "--input", dest="input", type=str, required=True, help="Please input the matrix")
+parser.add_argument('-o', '--output', dest='output', type=str, required=False, default=sys.stdout, help="Provide an output filename or default (stdout)")
+args = parser.parse_args()
+input = args.input
+output = args.output
+
+a = open(input, "r")
+b = a.readlines()
+b = [x.rstrip('\n').split('\t') for x in b ]
+c = defaultdict(lambda: defaultdict(float))
+for el in b:
+    c[el[0]][el[1]] = el[3]
+
+
+printBuf = []
+for k, v in c.iteritems():
+    printBuf.append('\n' + k + '\t')
+    for gene, value in v.iteritems():
+        printBuf.append(value + '\t')
+
+header = []
+for k, v in c.iteritems():
+    header.append("Patient" + '\t')
+    for gene, value in v.iteritems():
+        header.append(gene + '\t')
+    break
+toPrint = header + printBuf
+fh.write(''.join(toPrint))
+fh.close()
+
