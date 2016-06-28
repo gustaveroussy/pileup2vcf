@@ -89,7 +89,7 @@ class VCF(object):
             if self.indelsToAdd is not None:
                 for el in self.indelsToAdd:
                     print el.filterState
-                    if el.filterState != "Pass":
+                    if el.filterState != "PASS":
                         print >>fh, str(el)
         else:
             if (printHeader):

@@ -63,10 +63,21 @@ class Indel(TempBin):
         '''Applies various filters on Indel object'''
         #Apply various filters on indels
         # TODO
-        if abs(self.deltaOfDelta) > int(parameters['maxDeltaDelta']):
-            self.filterState = "DeltaOfDeltaOverflow"
-        else:
-            self.filterState = "Pass"
+        passFilter = "PASS"
+        self.failedLocFilters = []
+        
+        maxDeltaDelta = int(parameters['maxDeltaDelta'])
+        minFreq = self.parameters['minFreq']
+        
+        if abs(self.deltaOfDelta) > maxDeltaDelta:
+            self.failedLocFilters.append("Local: DeltaOfDeltaOverflow > {}".format(maxDeltaDelta))
+        if self.freq < minFreq:
+            self.failedLocFilters.append("Local: Freq < {0}".format(minFreq))
+        
+        if (len(self.failedLocFilters) != 0):
+            passFilter = '; '.join(self.failedLocFilters)
+        return passFilter
+        
 
     def __str__(self):
         try:

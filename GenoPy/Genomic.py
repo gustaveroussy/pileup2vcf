@@ -159,7 +159,7 @@ class Genomic(object):
         stop = childObject.stop
         if not isinstance(start, int) or not isinstance(stop, int):
             raise WrongTypeOfData("During genomic object comparison, some coordinates were not of integer types")
-        return self.chr == chr and start >= self.start and stop <= self.stop
+        return str(self.chr) == str(chr) and start >= self.start and stop <= self.stop
 
     def __str__(self):
         return '{0}\t{1}\t{2}\t{3}'.format(self.chr, self.start, self.stop, self.id)
@@ -286,37 +286,43 @@ class Bed(object):
             self.cache[k] = self.sorted_cache[k]
             del self.sorted_cache[k]
             
+
     def getBedAppartenance(self, o):
         '''Checks whether a Genomic-like object is related to a region described in the bed objects.
         Input: <Genomic-like>
         Output: <str> id and <bool>True
         Output: <None> and <bool>False
-        
+
         NB: Maintaining two different output shoudln't be really necessary, but I am waiting for the next release'''
-        chr, start, stop = o.chr, o.start, o.stop
-        if self.cached is None and self.cache[chr] != []:
-            self.cached = self.cache[chr].pop()
-        else:
-            self.cached = None
-            return None, False
+        chr, start, stop = str(o.chr), o.start, o.stop
+        #print self.cached if self.cache is not None
+        if self.cached is None:
+            if self.cache[chr] != []:
+                self.cached = self.cache[chr].pop()
+                print self.cache[chr]
+            else:
+                self.cached = None
+                return None, False
+        print self.cached
         if o in self.cached:
             return self.cached.id, True
         else:
             if (self.cache[chr] is False): return None, False
             while start > self.cached.stop or chr != self.cached.chr:
                 # Elect new start
-                if (len(self.cache[chr]) == 1):
+                   if (len(self.cache[chr]) == 1):
+                    print "Electing new start since {}:{}-{} > {}:{}-{}".format(chr, start, stop, self.cached.chr, self.cached.start, self.cached.stop)
                     self.cached = self.cache[chr].pop()
                     self.cache[chr] = False
                     break
                 if (len(self.cache[chr]) == 0):
-                    print 'Why did you request any update ? Were still not in cache'
+                    #print 'Why did you request any update ? Were still not in cache'
+                    return None, False
                 else:
                     self.cached = self.cache[chr].pop()
             if o in self.cached:
                 return self.cached.id, True
             else: return None, False
-
     def write(self, fh):
         '''Intended as a dumping function for BED objects.
         * Input: <file>file_handler
