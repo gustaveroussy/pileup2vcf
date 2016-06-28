@@ -41,15 +41,17 @@ For preset clinical constitutionnal filters:
 
 ## Author
 
-Yannick Boursin
+Yannick Boursin - 2015 & 2016 - Gustave Roussy
 
 ## Contributors
 
-Birama Ndiaye
-Alec Guyomard
-Jeremie Pagnac
+* Birama Ndiaye - 2015 & 2016 - Gustave Roussy
+* Alec Guyomard - 2016 - Gustave Roussy
+* Jeremie Pagnac - 2015 - Gustave Roussy
 
 ## Licence
 
-Yet to be chosen
+Yet to be chosen.
+For now, please do not use this program without explicit authorization.
+Please report any bug to yannick.boursin@gustaveroussy.fr
 
