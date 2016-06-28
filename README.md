@@ -30,7 +30,7 @@ If not root: `pip install --user <dependency name>`
 
 3) Generate a samtools file
 
-```samtools mpileup -A -s -O -B -o <output> -f <reference genome> <your bam file>```
+```samtools mpileup -A -s -O -B -f <reference genome> <your bam file> > <output.mpileup>```
 
 4) Use p2v
 
