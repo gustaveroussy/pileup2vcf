@@ -223,7 +223,8 @@ class Allele(object):
         return '\n'.join(a)
 
     def computeQuality(self):
-        '''Dummy quality function'''
+        '''Dummy quality function
+        * Output: <int> quality'''
         #print self.stackedQuality
         #print np.log10(float(self.stackedQuality) + float(0.00001))
         #print "Computed Quality for {0}".format(self.Allele)
@@ -273,7 +274,8 @@ class Allele(object):
 
     # Cette fonction effectue le test de Fisher exact entre la référence et les alternatifs. Elle donne une mesure de strand bias.
     def computeFisherStrandBias(self):
-        '''Method to compute Fisher strand bias on Allele object'''
+        '''Wrapper method to compute Fisher strand bias on Allele object.
+        * Output: <float> pvalue'''
         
         # On créé la table de contingence
         forwardRef = float(self.referenceForward)
@@ -502,7 +504,7 @@ class Variant(NewPosition):
 
     # Cette fonction permet de compter les évenements sur le brin sens et anti-sens, ainsi que les InDels
     def computeNucCount(self):
-        '''this method counts nuclotides in order to enable further frequency computation'''
+        '''This method counts nuclotides in order to enable further frequency computation'''
         for el in ["A", "T", "C", "G", "N"]:
             nucCount = 0
             nucCount += self.reverse[el]
@@ -540,7 +542,8 @@ class Variant(NewPosition):
         '''Call a variant.
         This method is intended to classify Allele objects for a variant. It calls
         the internal method _genotypeVariant in order to get a proper genotype between
-        valid Alleles'''
+        valid Alleles
+        * Output: <tuple of Allele> (ref, good, trash)'''
         # Le variant choisi aura la plus haute fréquence.
         #highestFreq = '',0
         #bestFreqDel = '', 0

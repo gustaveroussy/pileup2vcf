@@ -294,8 +294,11 @@ class Bed(object):
         
         NB: Maintaining two different output shoudln't be really necessary, but I am waiting for the next release'''
         chr, start, stop = o.chr, o.start, o.stop
-        if self.cached is None:
+        if self.cached is None and self.cache[chr] != []:
             self.cached = self.cache[chr].pop()
+        else: 
+            self.cached = None
+            return None, False
         if o in self.cached:
             return self.cached.id, True
         else:
