@@ -8,7 +8,8 @@ p2v is a mpileup-based variant caller that intends to allow you get everything a
 
 1) You should use samtools-0.1.18 in order to generate your pileup files. 
 
-```cd Dependencies
+```
+cd Dependencies
 tar xjvf *.bz2
 cd samtools*
 make
