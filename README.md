@@ -10,8 +10,8 @@ p2v is a mpileup-based variant caller that intends to allow you get everything a
 
 ```
 cd Dependencies
-tar xjvf *.bz2
-cd samtools*
+tar xjvf samtools-0.1.18.tar.bz2
+cd samtools-0.1.18
 make
 ( sudo make install )
 ```
