@@ -299,18 +299,18 @@ class Bed(object):
         if self.cached is None:
             if self.cache[chr] != []:
                 self.cached = self.cache[chr].pop()
-                print self.cache[chr]
+                #print self.cache[chr]
             else:
                 self.cached = None
                 return None, False
-        print self.cached
+        #print self.cached
         if o in self.cached:
             return self.cached.id, True
         else:
             if (self.cache[chr] is False): return None, False
             while start > self.cached.stop or chr != self.cached.chr:
                 # Elect new start
-                   if (len(self.cache[chr]) == 1):
+                if (len(self.cache[chr]) == 1):
                     print "Electing new start since {}:{}-{} > {}:{}-{}".format(chr, start, stop, self.cached.chr, self.cached.start, self.cached.stop)
                     self.cached = self.cache[chr].pop()
                     self.cache[chr] = False
