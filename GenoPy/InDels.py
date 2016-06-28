@@ -67,7 +67,7 @@ class Indel(TempBin):
         self.failedLocFilters = []
         
         maxDeltaDelta = int(parameters['maxDeltaDelta'])
-        minFreq = self.parameters['minFreq']
+        minFreq = int(parameters['minFreq'])
         
         if abs(self.deltaOfDelta) > maxDeltaDelta:
             self.failedLocFilters.append("Local: DeltaOfDeltaOverflow > {}".format(maxDeltaDelta))
@@ -76,7 +76,7 @@ class Indel(TempBin):
         
         if (len(self.failedLocFilters) != 0):
             passFilter = '; '.join(self.failedLocFilters)
-        return passFilter
+        self.filterState = passFilter
         
 
     def __str__(self):

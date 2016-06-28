@@ -88,7 +88,7 @@ class VCF(object):
             fh.flush()
             if self.indelsToAdd is not None:
                 for el in self.indelsToAdd:
-                    print el.filterState
+                    #print el.filterState
                     if el.filterState != "PASS":
                         print >>fh, str(el)
         else:
@@ -137,7 +137,7 @@ class VCF(object):
                                                                                             el.totCount)
             if self.indelsToAdd is not None:
                 for el in self.indelsToAdd:
-                    if el.filterState == "Pass":
-                        print str(el)
+                    if el.filterState == "PASS":
+                        #print str(el)
                         print >>fh, str(el)
             fh.flush()
