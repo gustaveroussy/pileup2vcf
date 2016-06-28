@@ -19,7 +19,7 @@ make
 * numpy
 * fisher
 * argparse
-* matplotlib (this might require 
+* matplotlib (this might require the installation of libpng-devel and freetype-devel)
 * biopython
 * pyfaidx
 

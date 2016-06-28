@@ -296,7 +296,7 @@ class Bed(object):
         chr, start, stop = o.chr, o.start, o.stop
         if self.cached is None and self.cache[chr] != []:
             self.cached = self.cache[chr].pop()
-        else: 
+        else:
             self.cached = None
             return None, False
         if o in self.cached:
