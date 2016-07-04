@@ -10,7 +10,7 @@ Last Update: 27 avril 2016
 @license: GNU GPLv3
 @organization: Gustave Roussy
 @version: 1.3
-@todo: Allele.computeQuality method, biggerContext and context cohabitation is useless
+@todo: Allele.computeQuality method, biggerContext and context cohabitation is useless. Sortir une piste BAF et ploter la BAF. 
 '''
 # Default library
 from operator import itemgetter, attrgetter

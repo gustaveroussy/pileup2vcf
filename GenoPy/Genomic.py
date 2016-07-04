@@ -196,7 +196,7 @@ class Position(object):
 
 class NewPosition(Genomic):
     """Internal class created by Position class allowing to define a new Position object"""
-    def __init__(self, chr, pos_start, quality, mapqual, depth, refNuc, pos_before=None, bed=None):
+    def __init__(self, chr, pos_start, quality, mapqual, depth, refNuc, pos_before=None, bed=None, assertion=False):
         super(NewPosition, self).__init__(chr, pos_start)
         self.depth = int(depth)
         self.refNuc = refNuc.upper()
@@ -206,7 +206,7 @@ class NewPosition(Genomic):
         self.nbAltFiltered = 0
         self.nbTotalAlt = 0
         if (self.depth != 0):
-            self.quality = [int(x) for x in fastqQuality(quality, assertion=True)]
+            self.quality = [int(x) for x in fastqQuality(quality, assertion=assertion)]
             self.mapQual = [int(x) for x in fastqQuality(mapqual)]
             self.avgQuality = sum(self.quality) / len(self.quality)
             self.avgMapQuality = sum(self.mapQual) / len(self.mapQual)

@@ -69,13 +69,14 @@ parser.add_argument("--loglevel", dest="ll", required=False, default=1, help="Lo
 parser.add_argument("--refGenome", "-R", dest="refGenome", required=True, help="Please give as input the Fasta file of the genome you used to align your sequences")
 parser.add_argument("--nofilter", action='store_true', dest="nofilter", required=False, help="Disables all filters. Please note that this cannot be overwritten by parameters you would enter.")
 parser.add_argument("--clinics", action='store_true', dest="clinics", required=False, help="Presets all the filters for clinical uses. Please not that this cannot be overwritten by parameters you would enter.")
-parser.add_argument("--minDeltaDepthToCallIndels", "-D", dest="minDeltaDepth", default=200, required=False, help="This is the minimum delta depth between 2 positions used in order to call for an InDel event [200]")
-parser.add_argument("--maxDeltaDeltaDepthToCallTrueIndel", "-F", dest="maxDeltaDelta", default=300, required=False, help="This is the maximum delta between two delta depth not to filter the event as a false positive [300]")
+parser.add_argument("--minDeltaDepthToCallIndels", "-D", dest="minDeltaDepth", default=110, required=False, help="This is the minimum delta depth between 2 positions used in order to call for an InDel event [200]")
+parser.add_argument("--maxDeltaDeltaDepthToCallTrueIndel", "-F", dest="maxDeltaDelta", default=400, required=False, help="This is the maximum delta between two delta depth not to filter the event as a false positive [300]")
 parser.add_argument("--bigIndelsFile", dest="bigIndelsFile", default="bigIndels", required=False, help="BigIndel tabulated file filename")
 parser.add_argument("--outputPrefix", dest="prefix", default=None, required=False, help="This is a prefix that will be prepended to all default filenames. When using this option, you will get every output by default")
 parser.add_argument("--toleranceToDetectFalseStopInBigIndels", "-T", dest="tolerance", default=0.15, type=float, required=False)
 parser.add_argument("--toleranceFalsePositiveEnd", "-C", dest="toleranceFalsePositiveEnd", default=2, type=int, required=False)
 parser.add_argument("--indelWindowLength", dest="indelWindowLength", default=50, type=int, required=False)
+parser.add_argument('--disableQualityScoreCheck', dest="disableQualityScoreCheck", default=False, action="store_true", help="Disables the quality score check")
 # Parametres
 args = parser.parse_args()
 parameters = defaultdict(bool)
@@ -108,7 +109,7 @@ parameters['bigIndelsFile'] = args.bigIndelsFile
 parameters['prefix'] = args.prefix
 parameters['toleranceFalsePositiveEnd'] = args.toleranceFalsePositiveEnd
 parameters['IndelWindowLength'] = args.indelWindowLength
-
+parameters['DisableQualityScoreCheck'] = args.disableQualityScoreCheck
 if args.nofilter is True:
     parameters['minFreq'] = 0
     parameters['minDepth'] = 0
