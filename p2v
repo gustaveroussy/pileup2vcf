@@ -131,8 +131,8 @@ if args.clinics is True:
     parameters['homTreshold'] = 70
     parameters['toleranceForBigIndels'] = 0.20
     parameters['toleranceFalsePositiveEnd'] = 3
-    #parameters['minDeltaDepth'] = 110
-    parameters['minDeltaDepth'] = 1000
+    parameters['minDeltaDepth'] = 110
+    #parameters['minDeltaDepth'] = 1000
 
 if parameters['prefix'] is not None:
     parameters['output'] = parameters['prefix'] + "." + parameters['output'] + ".vcf"
