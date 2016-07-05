@@ -7,6 +7,7 @@ TODO: Finaliser la détection des segments valides
 reparser. Quoi que ... Toujours possible de devenir plus sévère sur le delta minimum
 => Métrique de qualité des InDels ? Basée sur le nombre d'evenements ?
 => Sortir un plot de la profondeur avec une notation des segments retenus et l'emplacement des points de cassure en pointillés
+=> Limiter la taille entre evenements ? Par exemple: interdiction d'avoir 2 evenements 
 """
 
 from GenoPy.Genomic import *
@@ -270,7 +271,8 @@ def scanForIndels(parameters):
     old_id = None
     # We gather back the depthProfile 
     for o in tempToObjects(depthProfileH):
-        # This maintains the dequeu to a minimum length of 50
+        # print o
+        # This maintains the deque to a minimum length of 50
         if (len(indels.lastNucleotides) != parameters['IndelWindowLength']):
             indels.lastNucleotides.append(o)
         else:

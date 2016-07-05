@@ -15,6 +15,7 @@ Last Update: 27 avril 2016
 
 # Default library
 from collections import OrderedDict
+from GenoPy.Genomic import *
 
 ###############################################################################
 ########################    DepthProfile Class    #############################
@@ -91,3 +92,20 @@ class DepthProfile(object):
         self.writeDepthProfile(keepInMemory=keepInMemory, binDynamically=binDynamically)
         if Chromosome is not None:
             self.depthProfile[Chromosome] = OrderedDict()
+
+    def addVariants(self, uncl):
+        dphW = self.io.getIO('depthProfileAddMutW')
+        dphR = self.io.getIO('depthProfileAddMutR')
+        print >>dphW, "##Pileup2VCF - DepthProfile - v1.1"
+        print >>dphW, "#Chromosome\tStart\tDepth\trefNuc\tlast_position\tinBed\tquality\tmapQual\tavgQuality\tavgMapQuality\tnbAltPassFilter\tnbAltFiltered\tnbTotalAlt\tid"
+            
+        for pos in tempToObjects(dphR):
+            posHash = '{}-{}'.format(pos.chr, pos.start)
+            al = uncl.varDic[posHash]
+            if al is not False:
+                pos.nbAltPassFilter = al[0]
+                pos.nbAltFiltered = al[1]
+                pos.nbTotalAlt = pos.nbAltPassFilter + pos.nbAltFiltered
+            else: pass
+            print >>dphW, str(pos)
+            

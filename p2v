@@ -69,7 +69,7 @@ parser.add_argument("--loglevel", dest="ll", required=False, default=1, help="Lo
 parser.add_argument("--refGenome", "-R", dest="refGenome", required=True, help="Please give as input the Fasta file of the genome you used to align your sequences")
 parser.add_argument("--nofilter", action='store_true', dest="nofilter", required=False, help="Disables all filters. Please note that this cannot be overwritten by parameters you would enter.")
 parser.add_argument("--clinics", action='store_true', dest="clinics", required=False, help="Presets all the filters for clinical uses. Please not that this cannot be overwritten by parameters you would enter.")
-parser.add_argument("--minDeltaDepthToCallIndels", "-D", dest="minDeltaDepth", default=110, required=False, help="This is the minimum delta depth between 2 positions used in order to call for an InDel event [200]")
+parser.add_argument("--minDeltaDepthToCallIndels", "-D", dest="minDeltaDepth", default=200, required=False, help="This is the minimum delta depth between 2 positions used in order to call for an InDel event [200]")
 parser.add_argument("--maxDeltaDeltaDepthToCallTrueIndel", "-F", dest="maxDeltaDelta", default=400, required=False, help="This is the maximum delta between two delta depth not to filter the event as a false positive [300]")
 parser.add_argument("--bigIndelsFile", dest="bigIndelsFile", default="bigIndels", required=False, help="BigIndel tabulated file filename")
 parser.add_argument("--outputPrefix", dest="prefix", default=None, required=False, help="This is a prefix that will be prepended to all default filenames. When using this option, you will get every output by default")
@@ -131,6 +131,8 @@ if args.clinics is True:
     parameters['homTreshold'] = 70
     parameters['toleranceForBigIndels'] = 0.20
     parameters['toleranceFalsePositiveEnd'] = 3
+    #parameters['minDeltaDepth'] = 110
+    parameters['minDeltaDepth'] = 1000
 
 if parameters['prefix'] is not None:
     parameters['output'] = parameters['prefix'] + "." + parameters['output'] + ".vcf"
@@ -157,7 +159,7 @@ io.giveupIO("mpileupCount")
 
 io.register("mpileup", parameters['input'], "r")
 io.register("binningW", parameters['outputBins'], "w")
-io.register("depthProfile", parameters['depthProfile'], "w")
+io.register("depthProfile", parameters['depthProfile'] + ".withoutMut", "w")
 #io.register("bigIndels", parameters['bigIndelsFile'], "w")
 io.register("statistics", parameters['statistics'], "w")
 
@@ -193,9 +195,15 @@ good, trashed = unclassified_variants.classify_variants().getCollections()
 AllCollections = AllClassifiedVariantCollections(parameters)
 AllCollections.add('Good', good)
 AllCollections.add('Trash', trashed)
+# We will parse depthProfile and write it again to integrate variants (sadly, I have no other choice)
+io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
+io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
 
+depthProfile.addVariants(unclassified_variants)
 
 io.giveupIO('mpileup')
+io.unregister('depthProfileAddMutR')
+io.unregister('depthProfileAddMutW')
 
 io.register("depthProfileR1", parameters['depthProfile'], "r")
 io.register("depthProfileR2", parameters['depthProfile'], "r")

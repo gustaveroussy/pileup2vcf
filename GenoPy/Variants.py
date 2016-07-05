@@ -43,13 +43,16 @@ class UnclassifiedVariantCollection(object):
         self.counter = 0
         self.parameters = parameters
         self.io = parameters['io']
+        self.varDic = defaultdict(bool)
+        
 
     def classify_variants(self):
         '''Here, we apply filtering, genotyping and all on all variants. Two VariantCollection are outputed. VCF object takes a VariantCollection and
 	a file handler as input to output VariantCollections to files'''
         passFilter = [cur.getGlobalFilterState() for cur in self.col] # Apply global filters on variants
         self.io.log("There are {} variant positions with no filtering or calling".format(len(self.col)), loglevel=2)
-        [self._getCall(x) if y is True else None for x,y in zip(self.col, passFilter)] # Get call for variants that passed global filters
+        #[self._getCall(x) if y is True else None for x,y in zip(self.col, passFilter)] # Get call for variants that passed global filters
+        [self._getCall(x) for x in self.col]
         return self
     
     def _getCall(self, cur):
@@ -75,6 +78,9 @@ class UnclassifiedVariantCollection(object):
             self.good.add(cur)
         else:
             self.io.log('I do not understand', loglevel=1)
+        varHash = '{}-{}'.format(cur.chr, cur.start)
+        self.varDic[varHash] = (len(cur.goodAlleles), len(cur.trashedAlleles))
+            
         return True
     
     def getCollections(self):
@@ -112,6 +118,7 @@ class ClassifiedVariantCollection(object):
         self.parameters = parameters
         self.io = parameters['io']
         self.iterCounter = 0
+        
         
     def add(self, cur):
         '''Method intended to add a single variant to a classified collection

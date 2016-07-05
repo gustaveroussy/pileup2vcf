@@ -86,7 +86,10 @@ def tempToObjects(a):
     elif (first_line.strip() == "##Pileup2VCF - DepthProfile - v1.1"):
         for line in a:
             if not line.startswith("#"):
+                #if '809086' in line: print line
                 this = line.rstrip('\n').split('\t')
+                #if len(this) != 14:
+                #    print len(this), this
                 yield Position(*this)
     else:
         print "Unknown file type"
@@ -233,13 +236,13 @@ class TempPosition(Genomic):
             self.inBed = True
         else:
             self.inBed = False
-        self.quality = list(quality)
-        self.mapQual = list(mapQual)
-        self.avgQuality = avgQuality
-        self.avgMapQuality = avgMapQuality
-        self.nbAltPassFilter = nbAltPassFilter
-        self.nbAltFiltered = nbAltFiltered
-        self.nbTotalAlt = nbTotalAlt
+        self.quality = [ int(x) for x in quality.rstrip(']').lstrip('[').replace(' ', '').split(',') ]
+        self.mapQual = [ int(x) for x in mapQual.rstrip(']').lstrip('[').replace(' ', '').split(',') ]
+        self.avgQuality = int(avgQuality)
+        self.avgMapQuality = int(avgMapQuality)
+        self.nbAltPassFilter = int(nbAltPassFilter)
+        self.nbAltFiltered = int(nbAltFiltered)
+        self.nbTotalAlt = int(nbTotalAlt)
         self.id = id
 
     def __str__(self):

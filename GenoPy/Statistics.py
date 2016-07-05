@@ -65,6 +65,7 @@ class Statistics(object):
         # sur le variant calling.
 
         # Nous lui offrirons également une méthode pour calculer de lui même certaines choses. (genre ti/tv)
+        globalStat = True
         if type in self.dico_stats.keys():
             called = self.dico_stats[type]["called"]
             calledAlleleNumber = self.dico_stats[type]['calledAlleleNumber']
@@ -77,13 +78,15 @@ class Statistics(object):
                 dividedAllTiTv = "** Ti/Tv:\t+INF\t+INF%"
             else:
                 dividedAllTiTv = "** Ti/Tv:\t{0:.2f}\t{1:.2f}%".format( float( float(self.dico_stats[type]["allAlleleTiTv"]['ti']) / float(self.dico_stats[type]["allAlleleTiTv"]['tv']) ), float( float(self.dico_stats[type]["allAlleleTiTv"]['ti']) * 100 / float(self.dico_stats[type]["allAlleleTiTv"]['tv']) ) )
+            if globalStat:
+                print >>stath, "* Global statistics"
+                #print >>stath, "** Called variants:\t{0:.0f}\t{1:.2f}%".format(called, float(called * 100 / self.dico_stats['all']['called']) )
+                #print >>stath, "Trashed variants:\t{0:.0f}\t{1:.2f}%".format(trashed, float(trashed * 100 / total) )
+                print >>stath, "** Total variants:\t{0:.0f}".format(self.dico_stats['all']['called'])
+                print >>stath, "** Total called alleles:\t{0:.0f}\t{1:.2f}%".format(self.dico_stats['all']['calledAlleleNumber'], float(self.dico_stats['all']['calledAlleleNumber'] * 100 / self.dico_stats['all']['called']))
+                print >>stath, "** Total region size: {0} bases".format(self.dico_stats['positions'])
+                globalStat = False
             print >>stath, "Statistics for collection {}:".format(type)
-            print >>stath, "* Global statistics"
-            #print >>stath, "** Called variants:\t{0:.0f}\t{1:.2f}%".format(called, float(called * 100 / self.dico_stats['all']['called']) )
-            #print >>stath, "Trashed variants:\t{0:.0f}\t{1:.2f}%".format(trashed, float(trashed * 100 / total) )
-            print >>stath, "** Total variants:\t{0:.0f}".format(self.dico_stats['all']['called'])
-            print >>stath, "** Total called alleles:\t{0:.0f}\t{1:.2f}%".format(self.dico_stats['all']['calledAlleleNumber'], float(self.dico_stats['all']['calledAlleleNumber'] * 100 / self.dico_stats['all']['called']))
-            print >>stath, "** Total region size: {0} bases".format(self.dico_stats['positions'])
             print >>stath, "* In this collection:"
             print >>stath, "* --------------"
             print >>stath, "* Called variants"
