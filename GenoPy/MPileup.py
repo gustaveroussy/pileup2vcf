@@ -55,6 +55,7 @@ class MPileup(object):
         avancement = []
         alreadyPrinted = False
         lineCounter = 0
+        skipped = 0
         for line in self.file:
             lineCounter += 1
             try:
@@ -83,13 +84,18 @@ class MPileup(object):
                 avancement.append(chr)
                 before = elem[1]
                 self.log("Parsing and calling on {0}".format(chr))
+            curPos = Position(chr, pos, quality, mapQual, depth, refNuc, pos_before=before, bed=self.bed)
+            if not curPos.inBed and self.parameters['onlyBed']:
+                skipped += 1
+                continue
             if (lineCounter % 500 == 0):
                 percents = float(lineCounter) * 100 / float(self.parameters['lineNb'])
                 self.log("Parsed around {0:.2f}% of the file ({1} line read / {2} total)".format(percents, lineCounter, self.parameters['lineNb']), loglevel=3)
             context = self.getContextFromPosition(chr, pos)
             biggerContext = self.getContextFromPosition(chr, pos, howMuchNucleotides=100)
             if (int(depth) > 0):
-                self.dph.add(chr, pos, Position(chr, pos, quality, mapQual, depth, refNuc, pos_before=before, bed=self.bed))
+                
+                self.dph.add(chr, pos, curPos)
                 before = pos
             # Création d'un object contenant la ligne et pouvant accueillir un éventuel variant
             cur = Variant(chr, pos, refNuc, depth, sequence, quality, mapQual, self.parameters, context, biggerContext)
@@ -102,5 +108,6 @@ class MPileup(object):
             # peut entrainer beaucoup de variants selon la qualité du séquençage...
             # On verra bien ce que cela donne. L'étape suivante est
         self.dph.writeDepthProfile() # We write the last positions in depthProfile before returning
+        self.log("Skipped {} positions as they were not in Bed.".format(skipped), loglevel=2)
         return UnclassifiedVariantCollection(self.arrayPileup, self.parameters)
     
