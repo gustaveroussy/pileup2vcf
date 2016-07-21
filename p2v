@@ -17,12 +17,12 @@ from collections import defaultdict, OrderedDict
 import gzip
 import sys
 from decimal import *
-from scipy.stats import fisher_exact as fisher
+#from scipy.stats import fisher_exact as fisher
 from array import array
 import numpy as np
 from time import clock
-from matplotlib import pyplot as plt
-from Bio.Statistics.lowess import lowess
+#from matplotlib import pyplot as plt
+#from Bio.Statistics.lowess import lowess
 
 from GenoPy.Genomic import *
 from GenoPy.Variants import *

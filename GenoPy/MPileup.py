@@ -7,9 +7,9 @@ Created on 3 août 2015
 @author: boursin
 '''
 
-from matplotlib import pyplot as plt
-from matplotlib import collections as mc
-from Bio.Statistics.lowess import lowess
+#from matplotlib import pyplot as plt
+#from matplotlib import collections as mc
+#from Bio.Statistics.lowess import lowess
 from collections import OrderedDict, deque
 from GenoPy.Genomic import *
 from GenoPy.Variants import *
