@@ -68,6 +68,7 @@ class Statistics(object):
         globalStat = True
         if type in self.dico_stats.keys():
             called = self.dico_stats[type]["called"]
+            if called == 0: called = 1 # POTENTIAL BUG ?
             calledAlleleNumber = self.dico_stats[type]['calledAlleleNumber']
             total = self.dico_stats['positions']
             if (self.dico_stats[type]['majorAlleleTiTv']['tv'] == 0):

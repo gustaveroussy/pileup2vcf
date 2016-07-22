@@ -11,8 +11,23 @@
 #
 ### LICENCE: GNU GPLv3
 
+# This is the wrapper for parallel processing.
+# Rationale: I cannot use threads since the GIL is out there, I cannot use multiprocessing module since I have a bunch of unpickleable stuff,
+#            so the third easiest way is to wrap my program and launch it several time in a map/reduce way
+#            This wrapper will have almost the same interface as p2v and will become p2v in the end.
+#            It will take as input bam files or pileup files, or pileup.gz files and do what it takes to index them / tabix index them using htslib.
+#            Then, using a queue and the BED file, we will create datastreams and launch forks (n limited by command line arg) of p2v that will only see
+#            the aforementioned genomic data. 
+#            Maybe I will use os.Popen() to spawn the new forks (must see if I can make it non blocking and track the spawned forks), using pipes to feed genomic data
+#            Maybe I will use os.fork() to spawn new forks in which case I might have to use temporary files. 
+#
+#            In all cases, a temporary directory will be created, in which we will store all the children results. Once there is more than one children result,
+#            I will begin merging the files. The question is: should I manipulate the final files (easier I guess) or make p2v communicate with this process using some kind of IPC
+#            system and send all results to it. This would be cleaner I guess, but there might be issues regarding pickling (well, we'll see when we're there).
+
+
 from operator import itemgetter, attrgetter
-from argparse import ArgumentParser, SUPPRESS, RawDescriptionHelpFormatter
+from argparse import ArgumentParser
 from collections import defaultdict, OrderedDict
 import gzip
 import sys
@@ -33,31 +48,24 @@ from GenoPy.DepthProfile import DepthProfile
 from GenoPy.Bins import *
 from GenoPy.VCF import *
 
+from subprocess import Popen, PIPE
+from multiprocessing.dummy import Pool as ThreadPool
+from tempfile import mkstemp, mkdtemp
+import os
+from collections import deque
+
 DEBUG=True
-VERSION="1.3"
+VERSION="1.1.3"
 DEVELOPMENT=True
 UNSTABLE=True
-
-###############################################################################
-############################### Desc & Epilog #################################
-###############################################################################
-
-DESCRIPTION='''p2v (v{})
-Simple variant caller
-Github: https://github.com/OvoiDs/pileup2vcf'''.format(VERSION)
-EPILOG=''
-
-if UNSTABLE:
-    EPILOG += "This is an unstable version\n"
-if DEVELOPMENT:
-    EPILOG += "This is a development version\n"
 
 
 ###############################################################################
 ###############################  Main   #######################################
 ###############################################################################
 
-parser = ArgumentParser(description=DESCRIPTION, epilog=EPILOG, prog="p2v", formatter_class=RawDescriptionHelpFormatter)
+print >>sys.stdout, "Command line:", sys.argv
+parser = ArgumentParser()
 parser.add_argument("-i", "--input", dest="input", type=str, required=True, help="Please input the VCF file outputed by IonTorrent VariantCaller")
 parser.add_argument("--minFreq", dest="minFreq", type=float, required=False, default=0.01, help="Please input the minimum frequency of the variants you want reported. [0.01]")
 parser.add_argument("--minDepth", dest="minDepth", type=int, required=False, default=100, help="Please input minimum depth for variant calling. [100]")
@@ -86,16 +94,12 @@ parser.add_argument("--minDeltaDepthToCallIndels", "-D", dest="minDeltaDepth", d
 parser.add_argument("--maxDeltaDeltaDepthToCallTrueIndel", "-F", dest="maxDeltaDelta", default=400, required=False, help="This is the maximum delta between two delta depth not to filter the event as a false positive [300]")
 parser.add_argument("--bigIndelsFile", dest="bigIndelsFile", default="bigIndels", required=False, help="BigIndel tabulated file filename")
 parser.add_argument("--outputPrefix", dest="prefix", default=None, required=False, help="This is a prefix that will be prepended to all default filenames. When using this option, you will get every output by default")
-parser.add_argument("--toleranceToDetectFalseStopInBigIndels", "-T", dest="tolerance", default=0.15, type=float, required=False, help="Lets define two delta-depth values, X1 and X2, which describes the gain or loss of sequencing depth flanking an event. This tolerance value ensures that X1 + tolerance < X2 < X1 - tolerance" )
-#parser.add_argument("--toleranceFalsePositiveEnd", "-C", dest="toleranceFalsePositiveEnd", default=2, type=int, required=False)
-parser.add_argument("--indelWindowLength", dest="indelWindowLength", default=50, type=int, required=False, help="By default, the IndelDetector will buffer X nucleotides before starting scanning. You can change X with this argument.")
+parser.add_argument("--toleranceToDetectFalseStopInBigIndels", "-T", dest="tolerance", default=0.15, type=float, required=False)
+parser.add_argument("--toleranceFalsePositiveEnd", "-C", dest="toleranceFalsePositiveEnd", default=2, type=int, required=False)
+parser.add_argument("--indelWindowLength", dest="indelWindowLength", default=50, type=int, required=False)
 parser.add_argument('--disableQualityScoreCheck', dest="disableQualityScoreCheck", default=False, action="store_true", help="Disables the quality score check")
-parser.add_argument('--ncpu', dest='ncpu', help=SUPPRESS)
-parser.add_argument('--tmpDir', dest='tmpDir', help=SUPPRESS)
-parser.add_argument('--overrideInputPP2V', dest="overrideInput", help=SUPPRESS)
-parser.add_argument('--overrideOutputPP2V', dest="overrideOutput", help=SUPPRESS)
-parser.add_argument('--silent', dest='silent', action="store_true", help=SUPPRESS)
-
+parser.add_argument('--ncpu', dest='ncpu', default=2, help="How much CPUs should we use ?")
+parser.add_argument('--tmpDir', dest='tmpDir', default='/tmp/', help="Specify here the temporary directory p2v should use")
 # Parametres
 args = parser.parse_args()
 parameters = defaultdict(bool)
@@ -116,7 +120,7 @@ parameters['minBinSize'] = int(args.minBinSize)
 parameters['maxBinSize'] = int(args.maxBinSize)
 parameters['outputBins'] = args.outputBins
 parameters['depthProfile'] = args.depthProfile
-parameters['regions'] = args.regions
+parameters['regions'] = os.path.abspath(args.regions)
 parameters['sName'] = args.input.rstrip('.mpileup')
 parameters['onlyBed'] = True
 parameters['ll'] = args.ll
@@ -126,9 +130,10 @@ parameters['minDeltaDepth'] = args.minDeltaDepth
 parameters['maxDeltaDelta'] = int(args.maxDeltaDelta)
 parameters['bigIndelsFile'] = args.bigIndelsFile
 parameters['prefix'] = args.prefix
-#parameters['toleranceFalsePositiveEnd'] = args.toleranceFalsePositiveEnd
+parameters['toleranceFalsePositiveEnd'] = args.toleranceFalsePositiveEnd
 parameters['IndelWindowLength'] = args.indelWindowLength
 parameters['DisableQualityScoreCheck'] = args.disableQualityScoreCheck
+parameters['tmpDir'] = os.path.abspath(args.tmpDir)
 
 if args.nofilter is True:
     parameters['minFreq'] = 0
@@ -154,10 +159,6 @@ if args.clinics is True:
     parameters['minDeltaDepth'] = 110
     #parameters['minDeltaDepth'] = 1000
 
-if args.overrideInput: parameters['input'] = args.overrideInput
-if args.overrideOutput: parameters['prefix'] = args.overrideOutput
-if args.silent: parameters['ll'] = -1
-
 if parameters['prefix'] is not None:
     parameters['output'] = parameters['prefix'] + "." + parameters['output'] + ".vcf"
     parameters['statistics'] = parameters['prefix'] + "." + parameters['statistics']
@@ -168,110 +169,141 @@ if parameters['prefix'] is not None:
     parameters['regionsw'] = parameters['prefix'] + ".bed"
 
 #global io
-
 io = IO(parameters['ll'])
 parameters['io'] = io
-io.log("Command line: {}".format(' '.join(sys.argv)), loglevel=1)
+io.log("Starting program. Step 1: Map")
 io.register("mpileupCount", parameters['input'], "r")
 getLinesH = io.getIO("mpileupCount")
 
 lineNb = getLineCount(getLinesH)
 
 parameters['lineNb'] = lineNb
-io.log(parameters, loglevel=2)
+print parameters
 
 io.giveupIO("mpileupCount")
 
-io.register("mpileup", parameters['input'], "r")
-io.register("binningW", parameters['outputBins'], "w")
-io.register("depthProfile", parameters['depthProfile'] + ".withoutMut", "w")
-#io.register("bigIndels", parameters['bigIndelsFile'], "w")
-io.register("statistics", parameters['statistics'], "w")
-
-if (((parameters['output'] == '-') or (parameters['output'] is None)) and parameters['prefix'] is not None):
-    output = sys.stdout
-else:
-    output = parameters['output']
-
-io.register("GoodVariants", output, "w")
-if parameters['outputTrash'] is not None:
-    io.register("TrashedVariants", parameters['outputTrash'], 'w')
-    #trashVariants = TrashCollection()
-else:
-    trashVariants = None
 if parameters['regions'] is not None:
     io.register('regions', parameters['regions'], 'r')
-    io.register("bedW", parameters['regionsw'], "w")
 
     # Instanciation de Bed et parsing du fichier.
     bed = Bed()
     bedIn = io.getIO('regions')
     bed.parse(bedIn)
     io.giveupIO('regions')
+    
+    
 
-# Instanciation de MPileup et parsing du fichier.
-pileuph = io.getIO('mpileup')
-#goodVariants = GoodCollection()
-depthProfile = DepthProfile(io.getIO('depthProfile'), io)
-pileup = MPileup(pileuph, depthProfile, io, parameters, bed=bed)
+samtools = which('samtools')
+bgzip = which('bgzip')
+tabix = which('tabix')
 
-unclassified_variants = pileup.parse()
-good, trashed = unclassified_variants.classify_variants().getCollections()
-AllCollections = AllClassifiedVariantCollections(parameters)
-AllCollections.add('Good', good)
-AllCollections.add('Trash', trashed)
-# We will parse depthProfile and write it again to integrate variants (sadly, I have no other choice)
-io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
-io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
+if samtools is None or bgzip is None or tabix is None:
+    raise
 
-depthProfile.addVariants(unclassified_variants)
+def validate_input(input):
+    '''This should take care of any file, would it be BAM, PILEUP or PILEUP.GZ'''
+    # Do some stuff to ensure we end with mpileup.gz(.tbi) files
+    # What kind of file do we have as input ?
+    if input.endswith('.bam'):
+        # Need to check for index, then pileup, then gzip, then tabix
+        # In fact, we should also sort the input ...
+        index = Popen([samtools, 'index', input])
+        index.communicate()
+        pileupFile = input.rstrip('.bam') + '.pileup'
+        with open(pileupFile, "w") as ph:
+            pileup = Popen([samtools, 'mpileup', '-f', parameters['refGenome'], '-A', '-s', '-O', '-B', input], stdout=ph)
+            pileup.communicate()
+        input = pileupFile
+    if input.endswith('.mpileup') or input.endswith('.pileup'):
+        # Need to gzip then tabix
+        bzip = Popen([bgzip, '-f', input])
+        bzip.communicate()
+        input = input + ".gz"
+    # Need to tabix
+    tabx = Popen([tabix, '-s', '1', '-b', '2', '-e', '2', input])
+    tabx.communicate()
+    return input
 
-io.giveupIO('mpileup')
-io.unregister('depthProfileAddMutR')
-io.unregister('depthProfileAddMutW')
+def prepare_data_pool(input, bed):
+    io.log('Generating data pool', loglevel=2)
+    pool = []
+    for reg in bed.getRegions():
+        tabixQuery = '{}:{}-{}'.format(reg.chr, reg.start, reg.stop)
+        # Make a temporary pileup file restricted to that region, and return a list of temporary files
+        tmpDir = mkdtemp("." + tabixQuery, 'p2v', dir=parameters['tmpDir'])
+        tmpFile = mkstemp('.pileup', 'p2v.', dir=tmpDir, text=True)
+        tmpFileH = os.fdopen(tmpFile[0])
+        #print ' '.join([tabix, input, tabixQuery, '>', tmpFile[1]])
+        tabxQ = Popen([tabix, input, tabixQuery], stdout=tmpFileH)
+        tabxQ.communicate()
+        pool.append({"region": tabixQuery, "pileup": tmpFile[1], "tmpDir": tmpDir + "/"})
+        tmpFileH.close()
+    io.log('Finished initializing data pool with {} elements'.format(len(pool)), loglevel=2)
+    return pool
+    
+def launch_legacy_p2v(data):
+    # Wraps launching p2v into a function
+    # 1) Create a temporary subdir for results, which name will show what we're working on
+    tmpDir = data['tmpDir']
+    region = data['region']
+    pileup = data['pileup']
+    
+    oPrefix = tmpDir + region.split(':')[-1]
+    
+    cmdLine = ['python2', 'p2v'] + sys.argv[1:] + ['--overrideInputPP2V', pileup, '--overrideOutputPP2V', oPrefix, '--silent']
+    p2v = Popen(cmdLine)
+    p2v.communicate()
+    return {'oPrefix': oPrefix, 'region': region, 'tmpDir': tmpDir, 'pileup': pileup}
 
-io.register("depthProfileR1", parameters['depthProfile'], "r")
-io.register("depthProfileR2", parameters['depthProfile'], "r")
-indels = scanForIndels(parameters)
-allIndels = InDelDetector(indels)
-allIndels = allIndels.extract().genotype(parameters).getIndels()
-#io.register("weirdRegionW", parameters['bigIndelsFile'], "w")
-readDepthProfile = io.getIO('depthProfileR1')
-binningW = io.getIO('binningW')
-#weirdRegionH = io.getIO('weirdRegionW')
-binning = Binning(binningW, parameters)
-binning.bin(readDepthProfile)
+if not os.path.isdir(parameters['tmpDir']):
+    os.makedirs(parameters['tmpDir'])
+if not parameters['tmpDir'].endswith('/'): parameters['tmpDir'] += "/"
 
-#pileup.addIndelsToVCF()
-io.giveupIO('binningW')
-io.giveupIO('depthProfileR1')
-io.giveupIO('depthProfileR2')
+input = validate_input(parameters['input'])
+data_pool = prepare_data_pool(input, bed)
 
-# Output des résultats.
-# Binning
-#io.register('binningR', parameters['outputBins'], "r")
-#binningR = io.getIO('binningR')
-# # Regular: show all features
-#pileup.printBinning(binningR)
-# # Bed: show each region in plot.
-#pileup.alternateBinningPrinting(binningR)
+# Thread Pool initialization so we can use map
+# I use a thread pool here because I do not think I need any process complications ... Yeah I really have been shocked by this awful pickling stuff ...
+io.log('Initializing Thread/Process pool with {} cpu(s)'.format(args.ncpu))
+pool = ThreadPool(int(args.ncpu))
+results = pool.map(launch_legacy_p2v, data_pool)
+pool.close()
+pool.join()
 
-goodVCF = VCF(good, parameters, indelsToAdd=allIndels)
-goodVCF.printVCF(io.getIO('GoodVariants'), printHeader=True)
-#pileup.printVCF(goodVariants)
-io.giveupIO('GoodVariants')
-if parameters['outputTrash'] is not None:
-    trashVCF = VCF(trashed, parameters, indelsToAdd=allIndels)
-    trashVCF.printVCF(io.getIO('TrashedVariants'), printHeader=True)
-    io.giveupIO('TrashedVariants')
+io.log("Finished step 1 (Map)")
+io.log("Starting step 2 (Reduce)")
 
-if parameters['statistics']:
-    stath = io.getIO('statistics')
-    AllCollections.do_stats(stath)
-    io.giveupIO('statistics')
+writeQueue = deque()
+class Reduce(object):
+    def __init__(self, output):
+        self.writeQueue = deque()
+        self.output = output
+    def reduce(self, file, writeHeader=False):
+        with open(file, "r") as handle:
+            for line in handle:
+                if writeHeader and line.startswith("#"):
+                    self.writeQueue.append(line)
+                if not line.startswith('#'):
+                    self.writeQueue.append(line)
+    def write(self):
+        with open(self.output, "w") as handle:
+            for line in self.writeQueue:
+                handle.write(line)
+                
+writeHeader = True
 
-bedW = io.getIO('bedW')
-bed.write(bedW)
-io.giveupIO('bedW')
-io.endlog()
-sys.exit(io.unregister("all"))
+GoodVariantReduce = Reduce(parameters['output'])
+TrashReduce = Reduce(parameters['outputTrash'])
+
+for el in results:
+    oPrefix = el['oPrefix']
+    output = oPrefix + ".GoodVariants.vcf"
+    outputTrash = oPrefix + ".Trash.vcf"
+    GoodVariantReduce.reduce(output, writeHeader=writeHeader)
+    TrashReduce.reduce(outputTrash, writeHeader=writeHeader)
+    writeHeader = False
+
+GoodVariantReduce.write()
+TrashReduce.write()
+
+io.log("Finished step 2 (Reduce)")

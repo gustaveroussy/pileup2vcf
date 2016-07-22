@@ -20,6 +20,7 @@ from re import compile as recompile
 # Installed Libraries
 from fisher import pvalue as fisher
 import numpy as np
+import sys
 
 # My modules
 from GenoPy.Genomic import *
@@ -51,6 +52,8 @@ class UnclassifiedVariantCollection(object):
 	a file handler as input to output VariantCollections to files'''
         passFilter = [cur.getGlobalFilterState() for cur in self.col] # Apply global filters on variants
         self.io.log("There are {} variant positions with no filtering or calling".format(len(self.col)), loglevel=2)
+        if len(self.col) == 0:
+            sys.exit(0)
         #[self._getCall(x) if y is True else None for x,y in zip(self.col, passFilter)] # Get call for variants that passed global filters
         [self._getCall(x) for x in self.col]
         return self

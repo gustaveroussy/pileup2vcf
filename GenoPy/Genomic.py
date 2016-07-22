@@ -259,9 +259,7 @@ class Bed(object):
     def __init__(self):
         self.capture = defaultdict(list)
         self.cache = defaultdict(list)
-        self.sorted_cache = defaultdict(list)
         self.cached = None
-        # self.sorted_cache is kinda useless now, but I keep it until my code is stable
         
     def parse(self, fh):
         '''Parses BED file (without structural verification, this will be fixed later) and
@@ -282,13 +280,15 @@ class Bed(object):
         # the current position is inside it. If it is not, we will check that the
         # stop nucleotide hasn't already expired. If it has, we elect a new interval until we get
         # one for which it hasn't expired. If it hasn't, this becomes the new cached interval.
-        
-        for k,v in self.cache.iteritems():
-            sorted_list = sorted(v, key=attrgetter('start'), reverse=True)
-            self.sorted_cache[k] = sorted_list
-            self.cache[k] = self.sorted_cache[k]
-            del self.sorted_cache[k]
-            
+
+        for k in self.cache.keys():
+            self.cache[k] = sorted(self.cache[k], key=attrgetter('start'), reverse=True)
+    
+    def getRegions(self):
+        for ch in self.cache.keys():
+            for reg in self.cache[ch]:
+                #print reg
+                yield reg
 
     def getBedAppartenance(self, o):
         '''Checks whether a Genomic-like object is related to a region described in the bed objects.
@@ -314,7 +314,6 @@ class Bed(object):
             while start > self.cached.stop or chr != self.cached.chr:
                 # Elect new start
                 if (len(self.cache[chr]) == 1):
-                    print "Electing new start since {}:{}-{} > {}:{}-{}".format(chr, start, stop, self.cached.chr, self.cached.start, self.cached.stop)
                     self.cached = self.cache[chr].pop()
                     self.cache[chr] = False
                     break
