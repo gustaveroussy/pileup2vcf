@@ -90,6 +90,7 @@ parser.add_argument("--toleranceToDetectFalseStopInBigIndels", "-T", dest="toler
 #parser.add_argument("--toleranceFalsePositiveEnd", "-C", dest="toleranceFalsePositiveEnd", default=2, type=int, required=False)
 parser.add_argument("--indelWindowLength", dest="indelWindowLength", default=50, type=int, required=False, help="By default, the IndelDetector will buffer X nucleotides before starting scanning. You can change X with this argument.")
 parser.add_argument('--disableQualityScoreCheck', dest="disableQualityScoreCheck", default=False, action="store_true", help="Disables the quality score check")
+parser.add_argument('--gsc', dest="gsc", default=False, action="store_true", required=False, help="Somatic genetics thresholds. Please look at the code before use !")
 parser.add_argument('--ncpu', dest='ncpu', help=SUPPRESS)
 parser.add_argument('--tmpDir', dest='tmpDir', help=SUPPRESS)
 parser.add_argument('--overrideInputPP2V', dest="overrideInput", help=SUPPRESS)
@@ -166,6 +167,14 @@ if parameters['prefix'] is not None:
     parameters['bigIndelsFile'] = parameters['prefix'] + "." + parameters['bigIndelsFile']
     parameters['outputTrash'] = parameters['prefix'] + "." + parameters['outputTrash'] + ".vcf"
     parameters['regionsw'] = parameters['prefix'] + ".bed"
+    
+if args.gsc is True:
+    parameters['minFreq'] = 5
+    parameters['minDepth'] = 20
+    parameters['minReadsAlt'] = 5
+    parameters['minQuality'] = 30
+    parameters['localStrandBias'] = 95
+
 
 #global io
 
