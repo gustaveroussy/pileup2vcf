@@ -167,7 +167,7 @@ if parameters['prefix'] is not None:
     parameters['bigIndelsFile'] = parameters['prefix'] + "." + parameters['bigIndelsFile']
     parameters['outputTrash'] = parameters['prefix'] + "." + parameters['outputTrash'] + ".vcf"
     parameters['regionsw'] = parameters['prefix'] + ".bed"
-    
+
 if args.gsc is True:
     parameters['minFreq'] = 5
     parameters['minDepth'] = 20

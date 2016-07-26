@@ -21,6 +21,7 @@ from re import compile as recompile
 from fisher import pvalue as fisher
 import numpy as np
 import sys
+import math
 
 # My modules
 from GenoPy.Genomic import *
@@ -162,7 +163,11 @@ class Fisher(object):
         hash = '{}-{}-{}-{}'.format(ref1, ref2, alt1, alt2)
         if not self.cache[hash]:
             pvalue = fisher(ref1, ref2, alt1, alt2)
-            phred_pval = -10 * np.log10(pvalue.two_tail)
+            if not float(pvalue.two_tail) <= 0:
+                phred_pval = -10 * math.log10(pvalue.two_tail)
+            else:
+                phred_pval = 10000
+                # Ceiling !
             self.cache[hash] = phred_pval
             return phred_pval
         else:
