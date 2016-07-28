@@ -387,6 +387,8 @@ class Variant(NewPosition):
         a.append('Depth: ' + str(self.depth))
         a.append('Other informations')
         a.append('Refcount: {0}, refAllele: {2}, Filtered: {1}'.format(self.refCount, self.filtered, self.refNuc))
+        try: a.append('Computed Depth: {}'.format(self.totCount))
+        except: a.append('Computed Depth: None')
         try:
             a.append('Called Allele: {0}'.format(self.calledAllele))
         except:
@@ -412,9 +414,12 @@ class Variant(NewPosition):
         numeric = recompile('[0-9]')
         nucleotides = recompile('[ATGCNatgcn]')
         #print self.sequence, self.quality, self.mapQual
-        for item, itemQual, itemMapQual in zip(self.sequence, self.quality, self.mapQual): # 4ATTTTTT
+        #for item, itemQual, itemMapQual in zip(self.sequence, self.quality, self.mapQual): # 4ATTTTTT
+        for item in self.sequence:
+            #print item, ignoreNext, deletion, size
             # Lorsque le charactère '^' est rencontré, on ignore le prochain charactère car il désigne la qualité du read.
             if ignoreNext == 1:
+                #print item
                 ignoreNext = 0
                 continue
             # Si une insertion ou une délétion est détectée, on marque sa taille dans un dictionnaire et on initialise sa séquence.
@@ -459,6 +464,7 @@ class Variant(NewPosition):
                 if nucleotides.match(item):
                     IDSequence += item
                     size -= 1
+                    #if size == 1: size = 0
                     if (size == 0):
                         if (last[0] == "del"):
                             self.deletionsInfo[last[1]] += [IDSequence]
@@ -498,6 +504,8 @@ class Variant(NewPosition):
             # Symbole marquant une délétion.
             elif item == '-':
                 deletion = 1
+                #self.totCount -= 1
+                #self.totCount += 1
             # Symbole marquant une insertion. Les insertions sont comptées dans le "total depth"
             elif item == '+':
                 # On ne doit pas compter le "." et le "," dans le total depth.

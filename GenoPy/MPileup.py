@@ -101,8 +101,8 @@ class MPileup(object):
                 before = pos
             # Création d'un object contenant la ligne et pouvant accueillir un éventuel variant
             cur = Variant(chr, pos, refNuc, depth, sequence, quality, mapQual, self.parameters, context, biggerContext)
-            #print cur
             cur.getInfos()
+            #print cur
             if cur.isVariant() is True:
                 #print cur
                 self.arrayPileup.append(cur)
