@@ -59,38 +59,37 @@ if DEVELOPMENT:
 
 parser = ArgumentParser(description=DESCRIPTION, epilog=EPILOG, prog="p2v", formatter_class=RawDescriptionHelpFormatter)
 parser.add_argument("-i", "--input", dest="input", type=str, required=True, help="Please input the VCF file outputed by IonTorrent VariantCaller")
-parser.add_argument("--minFreq", dest="minFreq", type=float, required=False, default=0.01, help="Please input the minimum frequency of the variants you want reported. [0.01]")
-parser.add_argument("--minDepth", dest="minDepth", type=int, required=False, default=100, help="Please input minimum depth for variant calling. [100]")
-parser.add_argument("--minReadsAlt", dest="minReadsAlt", type=int, required=False, default=5, help="Minimum reads supporting ALT to call a variant [5]")
-parser.add_argument("--strandBias", dest="strandBias", type=int, required=False, default=90, help="This is supposed to be the threshold for maximum strand bias: if more than <value> percents reads are on one strand, the variant will be discarded. [90]")
-parser.add_argument("--fisherBias", dest="fisherBias", type=float, required=False, default=60, help="This is another indicator for strand bias. A Fisher Exact Test is computer for reference and alternate contigency tables. The p-value is then phred scaled. High values indicate more bias. [60]")
-parser.add_argument("--outputTrash", dest="outputTrash", default="Trash", type=str, required=False, help="This option allows you to output trashed variants. Please give either a path to a file, or a '-' to output on stderr")
-parser.add_argument("--quality", dest="quality", type=int, required=False, default=10, help="This allows to filter on quality. Quality shows the distance between called allele and other alleles at this position [10]")
-parser.add_argument("--output", "-o", dest="output", type=str, required=False, default="GoodVariants", help="This option allows you to output called variants. Please give either a path to a file, or a '-' to output on stdout")
-parser.add_argument("--statistics", "-s", dest="statistics", type=str, required=False, default="Statistics")
-parser.add_argument("--localStrandBias", dest="localStrandBias", required=False, default=100, type=int, help="Local strand bias. This checks for desequilibrium between forward and reverse strand in alternate allele [100 (deactivated)]")
-parser.add_argument("--hetTreshold", dest="hetTreshold", required=False, default=20, type=int, help="Treshold on variant frequency to call a heterozygous genotype [20]")
-parser.add_argument("--homTreshold", dest="homTreshold", required=False, default=75, type=int, help="Treshold on variant frequency to call a homozygous genotype [75]")
-#parser.add_argument("--snpCluster", dest="snpCluster", required=False, default=3, type=int, help="How many consecutive variants to filter out as snpCluster ? [3]")
-#parser.add_argument("--snpClusterWindowSize", dest="snpClusterWindowSize", required=False, default=20, type=int, help="Size of the window used for snpCluster filter computation [20bp]")
-parser.add_argument("--minBinSize", dest="minBinSize", required=False, default=5, help="Minimum size of any Bin to be called. A bin will not be called if there is less than this number of positions. Put 0 to deactivate. [5]")
-parser.add_argument("--maxBinSize", dest="maxBinSize", required=False, default=50, help="Maximum size of any Bin to be called. A new bin will be created each time this size is reached. [50]")
-parser.add_argument("--outputBins", dest="outputBins", required=False, default="Bins", help="Bin file filename")
-parser.add_argument("--depthProfile", dest="depthProfile", required=False, default="DepthProfile", help="DepthProfile file filename")
-parser.add_argument("--regions", "-r", dest="regions", required=True, help="Please give as input a BED file describing the regions you sequenced")
-parser.add_argument("--loglevel", dest="ll", required=False, default=1, help="Loglevel: 1: normally verbose; 5: debug mode [1]")
-parser.add_argument("--refGenome", "-R", dest="refGenome", required=True, help="Please give as input the Fasta file of the genome you used to align your sequences")
-parser.add_argument("--nofilter", action='store_true', dest="nofilter", required=False, help="Disables all filters. Please note that this cannot be overwritten by parameters you would enter.")
-parser.add_argument("--clinics", action='store_true', dest="clinics", required=False, help="Presets all the filters for clinical uses. Please not that this cannot be overwritten by parameters you would enter.")
-parser.add_argument("--minDeltaDepthToCallIndels", "-D", dest="minDeltaDepth", default=200, required=False, help="This is the minimum delta depth between 2 positions used in order to call for an InDel event [200]")
-parser.add_argument("--maxDeltaDeltaDepthToCallTrueIndel", "-F", dest="maxDeltaDelta", default=400, required=False, help="This is the maximum delta between two delta depth not to filter the event as a false positive [300]")
-parser.add_argument("--bigIndelsFile", dest="bigIndelsFile", default="bigIndels", required=False, help="BigIndel tabulated file filename")
-parser.add_argument("--outputPrefix", dest="prefix", default=None, required=False, help="This is a prefix that will be prepended to all default filenames. When using this option, you will get every output by default")
-parser.add_argument("--toleranceToDetectFalseStopInBigIndels", "-T", dest="tolerance", default=0.15, type=float, required=False, help="Lets define two delta-depth values, X1 and X2, which describes the gain or loss of sequencing depth flanking an event. This tolerance value ensures that X1 + tolerance < X2 < X1 - tolerance" )
-#parser.add_argument("--toleranceFalsePositiveEnd", "-C", dest="toleranceFalsePositiveEnd", default=2, type=int, required=False)
-parser.add_argument("--indelWindowLength", dest="indelWindowLength", default=50, type=int, required=False, help="By default, the IndelDetector will buffer X nucleotides before starting scanning. You can change X with this argument.")
+parser.add_argument("-R", "--refGenome", dest="refGenome", required=True, help="Please give as input the Fasta file of the genome you used to align your sequences")
+parser.add_argument("-r", "--regions", dest="regions", required=True, help="Please give as input a BED file describing the regions you sequenced")
+parser.add_argument("-o", "--outputPrefix", dest="prefix", default=None, required=True, help="This is a prefix that will be prepended to all default filenames. When using this option, you will get every output by default")
+
+parser.add_argument("--minFreq", dest="minFreq", type=float, required=False, help="Please input the minimum frequency of the variants you want reported. [0.01]")
+parser.add_argument("--minDepth", dest="minDepth", type=int, required=False, help="Please input minimum depth for variant calling. [100]")
+parser.add_argument("--minReadsAlt", dest="minReadsAlt", type=int, required=False, help="Minimum reads supporting ALT to call a variant [5]")
+parser.add_argument("--strandBias", dest="strandBias", type=int, required=False, help="This is supposed to be the threshold for maximum strand bias: if more than <value> percents reads are on one strand, the variant will be discarded. [90]")
+parser.add_argument("--fisherBias", dest="fisherBias", type=float, required=False, help="This is another indicator for strand bias. A Fisher Exact Test is computer for reference and alternate contigency tables. The p-value is then phred scaled. High values indicate more bias. [60]")
+parser.add_argument("--quality", dest="quality", type=int, required=False, help="This allows to filter on quality. Quality shows the distance between called allele and other alleles at this position [10]")
+parser.add_argument("--localStrandBias", dest="localStrandBias", required=False, type=int, help="Local strand bias. This checks for desequilibrium between forward and reverse strand in alternate allele [100 (deactivated)]")
+parser.add_argument("-D", "--minDeltaDepthToCallIndels", dest="minDeltaDepth", required=False, help="This is the minimum delta depth between 2 positions used in order to call for an InDel event [200]")
+parser.add_argument("-F", "--maxDeltaDeltaDepthToCallTrueIndel", dest="maxDeltaDelta", required=False, help="This is the maximum delta between two delta depth not to filter the event as a false positive [300]")
+parser.add_argument("-T", "--toleranceToDetectFalseStopInBigIndels", dest="tolerance", type=float, required=False, help="Lets define two delta-depth values, X1 and X2, which describes the gain or loss of sequencing depth flanking an event. This tolerance value ensures that X1 + tolerance < X2 < X1 - tolerance" )
+
+parser.add_argument("--hetTreshold", dest="hetTreshold", required=False, type=int, help="Treshold on variant frequency to call a heterozygous genotype [20]")
+parser.add_argument("--homTreshold", dest="homTreshold", required=False, type=int, help="Treshold on variant frequency to call a homozygous genotype [75]")
+#parser.add_argument("--snpCluster", dest="snpCluster", required=False, type=int, help="How many consecutive variants to filter out as snpCluster ? [3]")
+#parser.add_argument("--snpClusterWindowSize", dest="snpClusterWindowSize", required=False, type=int, help="Size of the window used for snpCluster filter computation [20bp]")
+parser.add_argument("--minBinSize", dest="minBinSize", required=False, help="Minimum size of any Bin to be called. A bin will not be called if there is less than this number of positions. Put 0 to deactivate. [5]")
+parser.add_argument("--maxBinSize", dest="maxBinSize", required=False, help="Maximum size of any Bin to be called. A new bin will be created each time this size is reached. [50]")
+parser.add_argument("--indelWindowLength", dest="indelWindowLength", type=int, required=False, help="By default, the IndelDetector will buffer X nucleotides before starting scanning. You can change X with this argument.")
+
+parser.add_argument("--loglevel", dest="ll", required=False, help="Loglevel: 1: normally verbose; 5: debug mode [1]")
 parser.add_argument('--disableQualityScoreCheck', dest="disableQualityScoreCheck", default=False, action="store_true", help="Disables the quality score check")
+
+
+parser.add_argument("--clinics", action='store_true', dest="clinics", required=False, help="Presets all the filters for clinical uses. Please not that this cannot be overwritten by parameters you would enter.")
+parser.add_argument("--nofilter", action='store_true', dest="nofilter", required=False, help="Disables all filters. Please note that this cannot be overwritten by parameters you would enter.")
 parser.add_argument('--gsc', dest="gsc", default=False, action="store_true", required=False, help="Somatic genetics thresholds. Please look at the code before use !")
+
 parser.add_argument('--ncpu', dest='ncpu', help=SUPPRESS)
 parser.add_argument('--tmpDir', dest='tmpDir', help=SUPPRESS)
 parser.add_argument('--overrideInputPP2V', dest="overrideInput", help=SUPPRESS)
@@ -98,85 +97,91 @@ parser.add_argument('--overrideOutputPP2V', dest="overrideOutput", help=SUPPRESS
 parser.add_argument('--silent', dest='silent', action="store_true", help=SUPPRESS)
 
 # Parametres
+
+defaults = {'fisherBias': 60, 'disableQualityScoreCheck': False, 'hetTreshold': 20, 'quality': 10, 'minDepth': 100, 'maxDeltaDelta': 400, 'll': 1, 'tolerance': 0.15, 'strandBias': 90, 'localStrandBias': 100, 'homTreshold': 75, 'minDeltaDepth': 200, 'minBinSize': 5, 'minReadsAlt': 5, 'maxBinSize': 50, 'indelWindowLength': 50, 'gsc': False, 'minFreq': 0.01}
+
+
 args = parser.parse_args()
 parameters = defaultdict(bool)
-parameters['input'] = args.input
-parameters['minFreq'] = args.minFreq
-parameters['minDepth'] = args.minDepth
-parameters['strandBias'] = args.strandBias
-parameters['fisherStrand'] = args.fisherBias
-parameters['outputTrash'] = args.outputTrash
-parameters['minReadsAlt'] = args.minReadsAlt
-parameters['minQuality'] = args.quality
-parameters['output'] = args.output
-parameters['statistics'] = args.statistics
-parameters['hetTreshold'] = args.hetTreshold
-parameters['homTreshold'] = args.homTreshold
-parameters['localStrandBias'] = args.localStrandBias
-parameters['minBinSize'] = int(args.minBinSize)
-parameters['maxBinSize'] = int(args.maxBinSize)
-parameters['outputBins'] = args.outputBins
-parameters['depthProfile'] = args.depthProfile
-parameters['regions'] = args.regions
-parameters['sName'] = args.input.rstrip('.mpileup')
-parameters['onlyBed'] = True
-parameters['ll'] = args.ll
-parameters['toleranceForBigIndels'] = args.tolerance
-parameters['refGenome'] = args.refGenome
-parameters['minDeltaDepth'] = args.minDeltaDepth
-parameters['maxDeltaDelta'] = int(args.maxDeltaDelta)
-parameters['bigIndelsFile'] = args.bigIndelsFile
-parameters['prefix'] = args.prefix
-#parameters['toleranceFalsePositiveEnd'] = args.toleranceFalsePositiveEnd
-parameters['IndelWindowLength'] = args.indelWindowLength
-parameters['DisableQualityScoreCheck'] = args.disableQualityScoreCheck
-
-if args.nofilter is True:
-    parameters['minFreq'] = 0
-    parameters['minDepth'] = 0
-    parameters['strandBias'] = 0
-    parameters['fisherStrand'] = 10000000
-    parameters['minReadsAlt'] = 0
-    parameters['minQuality'] = 0
-    parameters['localStrandBias'] = 0
-
 if args.clinics is True:
-    parameters['minFreq'] = 15
-    parameters['minDepth'] = 20
-    parameters['strandBias'] = 5
-    parameters['fisherStrand'] = 250
-    parameters['minReadsAlt'] = 20
-    parameters['minQuality'] = 50
-    parameters['localStrandBias'] = 90
-    parameters['hetTreshold'] = 20
-    parameters['homTreshold'] = 70
-    parameters['toleranceForBigIndels'] = 0.20
-    parameters['toleranceFalsePositiveEnd'] = 3
-    parameters['minDeltaDepth'] = 110
-    #parameters['minDeltaDepth'] = 1000
+    parameters['minFreq'] = 15 if args.minFreq is None else float(args.minFreq)
+    parameters['minDepth'] = 20 if args.minDepth is None else int(args.minDepth)
+    parameters['strandBias'] = 5 if args.strandBias is None else int(args.strandBias)
+    parameters['fisherStrand'] = 250 if args.fisherBias is None else float(args.fisherBias)
+    parameters['minReadsAlt'] = 20 if args.minReadsAlt is None else int(args.minReadsAlt)
+    parameters['minQuality'] = 50 if args.quality is None else float(args.quality)
+    parameters['localStrandBias'] = 90 if args.localStrandBias is None else int(args.localStrandBias)
+    parameters['hetTreshold'] = 20 if args.hetTreshold is None else int(args.hetTreshold)
+    parameters['homTreshold'] = 70 if args.homTreshold is None else int(args.homTreshold)
+    parameters['toleranceForBigIndels'] = 0.20 if args.tolerance is None else float(args.tolerance)
+    parameters['minDeltaDepth'] = 110 if args.minDeltaDepth is None else int(args.minDeltaDepth)
+    
+elif args.gsc is True:
+    parameters['minFreq'] = 5 if args.minFreq is None else float(args.minFreq)
+    parameters['minDepth'] = 20 if args.minDepth is None else int(args.minDepth)
+    parameters['minReadsAlt'] = 5 if args.minReadsAlt is None else int(args.minReadsAlt)
+    parameters['minQuality'] = 30 if args.quality is None else float(args.quality)
+    parameters['localStrandBias'] = 95 if args.localStrandBias is None else int(args.localStrandBias)
+    parameters['fisherStrand'] = 60 if args.fisherBias is None else float(args.fisherBias)
+    parameters['strandBias'] = 90 if args.strandBias is None else int(args.strandBias)
+    parameters['hetTreshold'] = 20 if args.hetTreshold is None else int(args.hetTreshold)
+    parameters['homTreshold'] = 75 if args.homTreshold is None else int(args.homTreshold)
+    parameters['toleranceForBigIndels'] = 0.15 if args.tolerance is None else float(args.tolerance)
+    parameters['minDeltaDepth'] = 200 if args.minDepthDepth is None else int(args.minDeltaDepth)
+    
+elif args.nofilter is True:
+    parameters['minFreq'] = 0 if args.minFreq is None else float(args.minFreq)
+    parameters['minDepth'] = 0 if args.minDepth is None else int(args.minDepth)
+    parameters['strandBias'] = 0 if args.strandBias is None else int(args.strandBias)
+    parameters['fisherStrand'] = 10000000 if args.fisherBias is None else float(args.fisherBias)
+    parameters['minReadsAlt'] = 0 if args.minReadsAlt is None else int(args.minReadsAlt)
+    parameters['minQuality'] = 0 if args.quality is None else float(args.quality)
+    parameters['localStrandBias'] = 0 if args.localStrandBias is None else int(args.localStrandBias)
+    parameters['hetTreshold'] = 20 if args.hetTreshold is None else int(args.hetTreshold)
+    parameters['homTreshold'] = 75 if args.homTreshold is None else int(args.homTreshold)
+    parameters['toleranceForBigIndels'] = 0.20 if args.tolerance is None else float(args.tolerance)
+    parameters['minDeltaDepth'] = 200 if args.minDeltaDepth is None else int(args.minDeltaDepth)
+    
+else:
+    parameters['minFreq'] = float(args.minFreq) if args.minFreq is not None else float(defaults['minFreq'])
+    parameters['minDepth'] = int(args.minDepth) if args.minDepth is not None else int(defaults['minDepth'])
+    parameters['strandBias'] = int(args.strandBias) if args.strandBias is not None else int(defaults['strandBias'])
+    parameters['fisherStrand'] = float(args.fisherBias) if args.fisherBias is not None else float(defaults['fisherBias'])
+    parameters['minQuality'] = float(args.quality) if args.quality is not None else float(defaults['quality'])
+    parameters['minReadsAlt'] = int(args.minReadsAlt) if args.minReadsAlt is not None else int(defaults['minReadsAlt'])
+    parameters['localStrandBias'] = int(args.localStrandBias) if args.localStrandBias is not None else int(defaults['localStrandBias'])
+    parameters['toleranceForBigIndels'] = float(args.tolerance) if args.tolerance is not None else float(defaults['tolerance'])
+    parameters['hetTreshold'] = int(args.hetTreshold) if args.hetTreshold is not None else int(defaults['hetTreshold'])
+    parameters['homTreshold'] = int(args.homTreshold) if args.homTreshold is not None else int(defaults['homTreshold'])
+    parameters['minDeltaDepth'] = int(args.minDeltaDepth) if args.minDeltaDepth is not None else int(defaults['minDeltaDepth'])
+    
+parameters['prefix'] = args.prefix
+if parameters['prefix'] is not None:
+    parameters['output'] = parameters['prefix'] + ".GoodVariants.vcf"
+    parameters['statistics'] = parameters['prefix'] + ".statistics"
+    parameters['outputBins'] = parameters['prefix'] + ".bins"
+    parameters['depthProfile'] = parameters['prefix'] + ".depthprofile"
+    parameters['outputTrash'] = parameters['prefix'] + ".Trash.vcf"
+    parameters['regionsw'] = parameters['prefix'] + ".bed"
+
+parameters['input'] = args.input
+parameters['minBinSize'] = int(args.minBinSize) if args.minBinSize is not None else int(defaults['minBinSize'])
+parameters['maxBinSize'] = int(args.maxBinSize) if args.maxBinSize is not None else int(defaults['maxBinSize'])
+parameters['regions'] = args.regions
+parameters['sName'] = args.input.rstrip('.mpileup') if args.input.endswith('.mpileup') else args.input.rstrip('.pileup')
+parameters['onlyBed'] = True
+parameters['ll'] = int(args.ll) if args.ll is not None else int(defaults['ll'])
+parameters['refGenome'] = args.refGenome
+parameters['maxDeltaDelta'] = int(args.maxDeltaDelta) if args.maxDeltaDelta is not None else int(defaults['maxDeltaDelta'])
+
+parameters['IndelWindowLength'] = args.indelWindowLength if args.indelWindowLength is not None else defaults['indelWindowLength']
+parameters['DisableQualityScoreCheck'] = args.disableQualityScoreCheck if args.disableQualityScoreCheck is not None else defaults['disableQualityScoreCheck']
 
 if args.overrideInput: parameters['input'] = args.overrideInput
 if args.overrideOutput: parameters['prefix'] = args.overrideOutput
 if args.silent: parameters['ll'] = -1
 
-if parameters['prefix'] is not None:
-    parameters['output'] = parameters['prefix'] + "." + parameters['output'] + ".vcf"
-    parameters['statistics'] = parameters['prefix'] + "." + parameters['statistics']
-    parameters['outputBins'] = parameters['prefix'] + "." + parameters['outputBins']
-    parameters['depthProfile'] = parameters['prefix'] + "." + parameters['depthProfile']
-    parameters['bigIndelsFile'] = parameters['prefix'] + "." + parameters['bigIndelsFile']
-    parameters['outputTrash'] = parameters['prefix'] + "." + parameters['outputTrash'] + ".vcf"
-    parameters['regionsw'] = parameters['prefix'] + ".bed"
 
-if args.gsc is True:
-    parameters['minFreq'] = 5
-    parameters['minDepth'] = 20
-    parameters['minReadsAlt'] = 5
-    parameters['minQuality'] = 30
-    parameters['localStrandBias'] = 95
-
-
-#global io
 
 io = IO(parameters['ll'])
 parameters['io'] = io
@@ -194,33 +199,20 @@ io.giveupIO("mpileupCount")
 io.register("mpileup", parameters['input'], "r")
 io.register("binningW", parameters['outputBins'], "w")
 io.register("depthProfile", parameters['depthProfile'] + ".withoutMut", "w")
-#io.register("bigIndels", parameters['bigIndelsFile'], "w")
 io.register("statistics", parameters['statistics'], "w")
+io.register("GoodVariants", parameters['output'], "w")
+io.register("TrashedVariants", parameters['outputTrash'], 'w')
+io.register('regions', parameters['regions'], 'r')
+io.register("bedW", parameters['regionsw'], "w")
 
-if (((parameters['output'] == '-') or (parameters['output'] is None)) and parameters['prefix'] is not None):
-    output = sys.stdout
-else:
-    output = parameters['output']
-
-io.register("GoodVariants", output, "w")
-if parameters['outputTrash'] is not None:
-    io.register("TrashedVariants", parameters['outputTrash'], 'w')
-    #trashVariants = TrashCollection()
-else:
-    trashVariants = None
-if parameters['regions'] is not None:
-    io.register('regions', parameters['regions'], 'r')
-    io.register("bedW", parameters['regionsw'], "w")
-
-    # Instanciation de Bed et parsing du fichier.
-    bed = Bed()
-    bedIn = io.getIO('regions')
-    bed.parse(bedIn)
-    io.giveupIO('regions')
+# Instanciation de Bed et parsing du fichier.
+bed = Bed()
+bedIn = io.getIO('regions')
+bed.parse(bedIn)
+io.giveupIO('regions')
 
 # Instanciation de MPileup et parsing du fichier.
 pileuph = io.getIO('mpileup')
-#goodVariants = GoodCollection()
 depthProfile = DepthProfile(io.getIO('depthProfile'), io)
 pileup = MPileup(pileuph, depthProfile, io, parameters, bed=bed)
 
@@ -244,10 +236,8 @@ io.register("depthProfileR2", parameters['depthProfile'], "r")
 indels = scanForIndels(parameters)
 allIndels = InDelDetector(indels)
 allIndels = allIndels.extract().genotype(parameters).getIndels()
-#io.register("weirdRegionW", parameters['bigIndelsFile'], "w")
 readDepthProfile = io.getIO('depthProfileR1')
 binningW = io.getIO('binningW')
-#weirdRegionH = io.getIO('weirdRegionW')
 binning = Binning(binningW, parameters)
 binning.bin(readDepthProfile)
 
@@ -269,15 +259,13 @@ goodVCF = VCF(good, parameters, indelsToAdd=allIndels)
 goodVCF.printVCF(io.getIO('GoodVariants'), printHeader=True)
 #pileup.printVCF(goodVariants)
 io.giveupIO('GoodVariants')
-if parameters['outputTrash'] is not None:
-    trashVCF = VCF(trashed, parameters, indelsToAdd=allIndels)
-    trashVCF.printVCF(io.getIO('TrashedVariants'), printHeader=True)
-    io.giveupIO('TrashedVariants')
+trashVCF = VCF(trashed, parameters, indelsToAdd=allIndels)
+trashVCF.printVCF(io.getIO('TrashedVariants'), printHeader=True)
+io.giveupIO('TrashedVariants')
 
-if parameters['statistics']:
-    stath = io.getIO('statistics')
-    AllCollections.do_stats(stath)
-    io.giveupIO('statistics')
+stath = io.getIO('statistics')
+AllCollections.do_stats(stath)
+io.giveupIO('statistics')
 
 bedW = io.getIO('bedW')
 bed.write(bedW)
