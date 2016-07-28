@@ -919,51 +919,51 @@ class Variant(NewPosition):
         for elem in it:
             pass ## Here should be continued
 
-    def getLocalFilterState(self):
-        '''This method returns the local filter state and applies various filtering methods.
-        StrandBias, Frequency, Alternate reads number, Fisher test for Strand Bias, Quality'''
-        passFilter = True
-        self.failedLocFilters = []
-
-        # Defines parameters
-        # There is some identical code in Allele Class ... maybe we should dedup ?
-        localStrandBias = self.parameters['localStrandBias']
-        minFreq = self.parameters['minFreq']
-        minReadsAlt = self.parameters['minReadsAlt']
-        fisherStrand = self.parameters['fisherStrand']
-        minQuality = self.parameters['minQuality']
-        # End define parameters
-
-        localsb = float(self.forward[self.type]) * 100 / (float(self.reverse[self.type]) + float(self.forward[self.type]))
-        self.localsb = localsb
-        reverseLocalStrandBias = abs(100 - localStrandBias)
-        paramLocalStrandBias = [localStrandBias, reverseLocalStrandBias]
-        lowerParamLocalStrandBias = min(paramLocalStrandBias)
-        greaterParamLocalStrandBias = max(paramLocalStrandBias)
-
-        if (float(localsb) > float(greaterParamLocalStrandBias)):
-            self.failedLocFilters.append("Local: LocalStrandBias > {0}".format(greaterParamLocalStrandBias))
-        if (float(localsb) < float(lowerParamLocalStrandBias)):
-            self.failedLocFilters.append("Local: LocalStrandBias < {0}".format(lowerParamLocalStrandBias))
-
-        if (float(self.calledFreq) < float(minFreq)):
-            self.failedLocFilters.append("Local: Freq < {0}".format(minFreq))
-        if (int(self.calledDepth) < int(minReadsAlt)):
-            self.failedLocFilters.append("Local: AltReads < {0}".format(minReadsAlt))
-        if (self.markIns):
-            allele = "ins"
-        elif (self.markDel):
-            allele = 'del'
-        else:
-            allele = self.calledAllele
-        self.lfs = self.computeFisherStrandBias(allele)
-        if (float(self.lfs) > float(fisherStrand)):
-            self.failedLocFilters.append("Local: LocalFisherStrand > {0}".format(fisherStrand))
-        if (float(self.calledQuality) < float(minQuality)):
-            self.failedLocFilters.append("Quality < {0}".format(minQuality))
-        if (len(self.failedLocFilters) != 0):
-            passFilter = '; '.join(self.failedLocFilters)
-        return passFilter
+#     def getLocalFilterState(self):
+#         '''This method returns the local filter state and applies various filtering methods.
+#         StrandBias, Frequency, Alternate reads number, Fisher test for Strand Bias, Quality'''
+#         passFilter = True
+#         self.failedLocFilters = []
+# 
+#         # Defines parameters
+#         # There is some identical code in Allele Class ... maybe we should dedup ?
+#         localStrandBias = self.parameters['localStrandBias']
+#         minFreq = self.parameters['minFreq']
+#         minReadsAlt = self.parameters['minReadsAlt']
+#         fisherStrand = self.parameters['fisherStrand']
+#         minQuality = self.parameters['minQuality']
+#         # End define parameters
+# 
+#         localsb = float(self.forward[self.type]) * 100 / (float(self.reverse[self.type]) + float(self.forward[self.type]))
+#         self.localsb = localsb
+#         reverseLocalStrandBias = abs(100 - localStrandBias)
+#         paramLocalStrandBias = [localStrandBias, reverseLocalStrandBias]
+#         lowerParamLocalStrandBias = min(paramLocalStrandBias)
+#         greaterParamLocalStrandBias = max(paramLocalStrandBias)
+# 
+#         if (float(localsb) > float(greaterParamLocalStrandBias)):
+#             self.failedLocFilters.append("Local: LocalStrandBias > {0}".format(greaterParamLocalStrandBias))
+#         if (float(localsb) < float(lowerParamLocalStrandBias)):
+#             self.failedLocFilters.append("Local: LocalStrandBias < {0}".format(lowerParamLocalStrandBias))
+# 
+#         if (float(self.calledFreq) < float(minFreq)):
+#             self.failedLocFilters.append("Local: Freq < {0}".format(minFreq))
+#         if (int(self.calledDepth) < int(minReadsAlt)):
+#             self.failedLocFilters.append("Local: AltReads < {0}".format(minReadsAlt))
+#         if (self.markIns):
+#             allele = "ins"
+#         elif (self.markDel):
+#             allele = 'del'
+#         else:
+#             allele = self.calledAllele
+#         self.lfs = self.computeFisherStrandBias(allele)
+#         if (float(self.lfs) > float(fisherStrand)):
+#             self.failedLocFilters.append("Local: LocalFisherStrand > {0}".format(fisherStrand))
+#         if (float(self.calledQuality) < float(minQuality)):
+#             self.failedLocFilters.append("Quality < {0}".format(minQuality))
+#         if (len(self.failedLocFilters) != 0):
+#             passFilter = '; '.join(self.failedLocFilters)
+#         return passFilter
 
     def computeIndelFreq(self, indel):
         '''Computes frequencies for InDels'''
