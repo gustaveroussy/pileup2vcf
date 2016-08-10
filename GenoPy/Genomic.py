@@ -287,8 +287,28 @@ class Bed(object):
     def getRegions(self):
         for ch in self.cache.keys():
             for reg in self.cache[ch]:
-                #print reg
-                yield reg
+                yield reg.chr, reg.start, reg.stop
+    def getRegionsList(self):
+        regs = []
+        for ch in self.cache.keys():
+            for reg in self.cache[ch]:
+                regs.append((reg.chr, reg.start, reg.stop))
+        return regs
+
+    def getBroadRegions(self, n):
+        buf = []
+        for ch in self.cache.keys():
+            for reg in self.cache[ch]:
+                if len(buf) != 0:
+                    if reg.chr != buf[-1].chr:
+                        yield buf[0].chr, buf[-1].start, buf[0].stop
+                        buf = []
+
+                if len(buf) == n:
+                    yield buf[0].chr, buf[-1].start, buf[0].stop
+                    buf = []
+
+                buf.append(reg)
 
     def getBedAppartenance(self, o):
         '''Checks whether a Genomic-like object is related to a region described in the bed objects.

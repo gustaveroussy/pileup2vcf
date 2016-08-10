@@ -35,7 +35,7 @@ from decimal import *
 #from scipy.stats import fisher_exact as fisher
 from array import array
 import numpy as np
-from time import clock
+from time import clock, strftime
 #from matplotlib import pyplot as plt
 #from Bio.Statistics.lowess import lowess
 
@@ -224,11 +224,13 @@ def validate_input(input):
     tabx.communicate()
     return input
 
-def prepare_data_pool(input, bed):
+def prepare_data_pool(input, bed, ncpu):
     io.log('Generating data pool', loglevel=2)
     pool = []
-    for reg in bed.getRegions():
-        tabixQuery = '{}:{}-{}'.format(reg.chr, reg.start, reg.stop)
+    Tpool = ThreadPool(int(ncpu))
+
+    def prepare_region(reg):
+        tabixQuery = '{}:{}-{}'.format(reg[0], reg[1], reg[2])
         # Make a temporary pileup file restricted to that region, and return a list of temporary files
         tmpDir = mkdtemp("." + tabixQuery, 'p2v', dir=parameters['tmpDir'])
         tmpFile = mkstemp('.pileup', 'p2v.', dir=tmpDir, text=True)
@@ -236,16 +238,28 @@ def prepare_data_pool(input, bed):
         #print ' '.join([tabix, input, tabixQuery, '>', tmpFile[1]])
         tabxQ = Popen([tabix, input, tabixQuery], stdout=tmpFileH)
         tabxQ.communicate()
-        pool.append({"region": tabixQuery, "pileup": tmpFile[1], "tmpDir": tmpDir + "/"})
         tmpFileH.close()
+        return {"region": tabixQuery, "pileup": tmpFile[1], "tmpDir": tmpDir + "/"}
+
+    regionLength=len(bed.getRegionsList())
+    if regionLength < 10000:
+        pool = list(bed.getRegions())
+    else:
+        print "Going with {} regions".format(regionLength/100)
+        pool = list(bed.getBroadRegions(regionLength/100))
+
+    results = Tpool.map(prepare_region, pool)
+    Tpool.close()
+    Tpool.join()
     io.log('Finished initializing data pool with {} elements'.format(len(pool)), loglevel=2)
-    return pool
+    return results
     
 def launch_legacy_p2v(data):
     # Wraps launching p2v into a function
     # 1) Create a temporary subdir for results, which name will show what we're working on
     tmpDir = data['tmpDir']
     region = data['region']
+    sys.stdout.write("Launching p2v on %s\n" % region)
     pileup = data['pileup']
     
     oPrefix = tmpDir + region.split(':')[-1]
@@ -253,25 +267,42 @@ def launch_legacy_p2v(data):
     cmdLine = ['python2', 'p2v'] + sys.argv[1:] + ['--overrideInputPP2V', pileup, '--overrideOutputPP2V', oPrefix, '--silent']
     p2v = Popen(cmdLine)
     p2v.communicate()
+    io.log('Finished task {} / {}'.format(taskNb, poolLength), loglevel=2)
     return {'oPrefix': oPrefix, 'region': region, 'tmpDir': tmpDir, 'pileup': pileup}
 
 if not os.path.isdir(parameters['tmpDir']):
     os.makedirs(parameters['tmpDir'])
 if not parameters['tmpDir'].endswith('/'): parameters['tmpDir'] += "/"
 
+print strftime('%X %x %Z')
+print 'Validating Input'
 input = validate_input(parameters['input'])
-data_pool = prepare_data_pool(input, bed)
-
+print strftime('%X %x %Z')
+print 'Validated Input'
+print strftime('%X %x %Z')
+print 'Preparing data pool'
+data_pool = prepare_data_pool(input, bed, args.ncpu)
+print strftime('%X %x %Z')
+print 'Prepared data pool'
+print strftime('%X %x %Z')
+poolLength = len(data_pool)
+taskNb = 0
 # Thread Pool initialization so we can use map
 # I use a thread pool here because I do not think I need any process complications ... Yeah I really have been shocked by this awful pickling stuff ...
 io.log('Initializing Thread/Process pool with {} cpu(s)'.format(args.ncpu))
 pool = ThreadPool(int(args.ncpu))
+print strftime('%X %x %Z')
+print 'Launching p2v on pool'
 results = pool.map(launch_legacy_p2v, data_pool)
 pool.close()
 pool.join()
+print 'Finished p2v on pool'
+print strftime('%X %x %Z')
 
 io.log("Finished step 1 (Map)")
 io.log("Starting step 2 (Reduce)")
+print 'Starting to reduce dataset'
+print strftime('%X %x %Z')
 
 writeQueue = deque()
 class Reduce(object):
@@ -305,5 +336,6 @@ for el in results:
 
 GoodVariantReduce.write()
 TrashReduce.write()
-
+print 'Finished reducing datasets'
+print strftime('%X %x %Z')
 io.log("Finished step 2 (Reduce)")

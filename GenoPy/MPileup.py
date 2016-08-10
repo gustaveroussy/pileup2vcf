@@ -59,28 +59,30 @@ class MPileup(object):
         for line in self.file:
             lineCounter += 1
             try:
+                #with line.split('\t') as elem:
                 elem = line.split('\t')
                 chr = elem[0].strip().rstrip('\n').rstrip('\t')
                 pos = int(elem[1].strip().rstrip('\n').rstrip('\t'))
                 refNuc = elem[2].strip().rstrip('\n').rstrip('\t').upper()
                 depth = int(elem[3].strip().rstrip('\n').rstrip('\t'))
-                if depth == 0:
-                    #print "Unsequenced region at {}-{}".format(chr, pos)
-                    continue
                 sequence = elem[4].strip().rstrip('\n').rstrip('\t')
                 quality = elem[5].strip().rstrip('\n').rstrip('\t')
                 mapQual = elem[6].strip().rstrip('\n').rstrip('\t')
                 posInRead = elem[7].strip().rstrip('\n').rstrip('\t').split(',')
                 #print len(posInRead), len(mapQual), len(quality)
                 # Assertions
-                assert (len(mapQual) == len(quality)), "Weird formating: mapping quality track length is not the same as nucleotide quality track length"
-                assert (len(quality) == len(posInRead)), "Weird formating: nucleotide quality track length is not the same as position in read track length"
-                assert (len(refNuc) == 1), "Weird formating: there is {} nucleotide at this position !".format(len(refNuc))
+                #assert (len(mapQual) == len(quality)), "Weird formating: mapping quality track length is not the same as nucleotide quality track length"
+                #assert (len(quality) == len(posInRead)), "Weird formating: nucleotide quality track length is not the same as position in read track length"
+                #assert (len(refNuc) == 1), "Weird formating: there is {} nucleotide at this position !".format(len(refNuc))
             
             except:
+                print 'CrashDump:'
                 print line
+                print [len(x) for x in elem]
                 raise MpileupFormatError("Cannot initialize at line {}.\n Please check that your Mpileup file has 8 columns and has been generated with mapping quality and base position in read using samtools 0.1.18 (further versions seems to suffer from bugs).\n MPileup with good format might be generated using: samtools mpileup -A -s -O -B -f ../Pileup2VCF/hg19/hg19.fa 208204422-ADN-2_S2_L001.bam".format(lineCounter))
-                #raise
+            if depth == 0:
+                #print "Unsequenced region at {}-{}".format(chr, pos)
+                continue
             if not chr in avancement:
                 self.dph.walk(Chromosome=chr)
                 avancement.append(chr)
@@ -101,8 +103,8 @@ class MPileup(object):
                 before = pos
             # Création d'un object contenant la ligne et pouvant accueillir un éventuel variant
             cur = Variant(chr, pos, refNuc, depth, sequence, quality, mapQual, self.parameters, context, biggerContext)
-            cur.getInfos()
             #print cur
+            cur.getInfos()
             if cur.isVariant() is True:
                 #print cur
                 self.arrayPileup.append(cur)
