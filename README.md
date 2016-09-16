@@ -43,6 +43,8 @@ For preset clinical constitutionnal filters:
 
 Yannick Boursin - 2015 & 2016 - Gustave Roussy
 
+Until we choose a licence, please be advised that all rights are reserved.
+
 ## Contributors
 
 * Birama Ndiaye - 2015 & 2016 - Gustave Roussy
