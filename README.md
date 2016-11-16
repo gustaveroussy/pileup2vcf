@@ -53,7 +53,6 @@ Until we choose a licence, please be advised that all rights are reserved.
 
 ## Licence
 
-Yet to be chosen.
-For now, please do not use this program without explicit authorization.
+Licence CeCILL => http://www.cecill.info/licences/Licence_CeCILL_V2.1-fr.txt
 Please report any bug to yannick.boursin@gustaveroussy.fr
 
