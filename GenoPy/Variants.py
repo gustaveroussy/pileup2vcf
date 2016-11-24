@@ -3,13 +3,13 @@
 
 '''
 Created on 3 août 2015
-Last Update: 27 avril 2016
+Last Update: 24 norvembre 2016
 
 @author: Yannick Boursin
 @contact: yannick.boursin@gustaveroussy.fr
 @license: GNU GPLv3
 @organization: Gustave Roussy
-@version: 1.3
+@version: 1.4
 @todo: Allele.computeQuality method, biggerContext and context cohabitation is useless. Sortir une piste BAF et ploter la BAF. 
 '''
 # Default library
@@ -281,7 +281,7 @@ class Allele(object):
         
         if (float(self.lfs) > float(self.parameters['fisherStrand'])):
             self.failedLocFilters.append("Local: LocalFisherStrand > {0}".format(self.parameters['fisherStrand']))
-        
+       
         if (len(self.failedLocFilters) != 0):
             passFilter = '; '.join(self.failedLocFilters)
         self.passFilter = passFilter
@@ -365,6 +365,46 @@ class Variant(NewPosition):
         self.filtered = False
         self.context = context
         self.biggerContext = biggerContext
+
+        # Champs de la qualité
+        self.minReadQuality = 0
+        self.minMappingQuality = 0
+
+    #Retourne le nombre de reads possèdant une qualité de base supérieure au seuil
+#Sauvergarder le range de qualité ici (définir de manière globale)
+    def computeMinReadQuality(self):
+	n = 0
+        for q in self.quality:
+                if (q < float(self.parameters['minReadQuality'])):
+                        n += 1
+        return n
+
+    #Retourne la moyenne de qualité des bases de reads
+    def computeMeanReadQuality(self):
+        meanReadQuality = 0
+        for q in self.quality:
+                meanReadQuality += q
+        return meanReadQuality/len(self.quality)
+
+    #Retourne le nombre de reads possèdant une qualité d'alignement supérieure au seuil
+#Sauvergarder le range de qualité ici (définir de manière globale)
+    def computeMinMappingQuality(self):
+        n = 0
+	lengthMapQual = len(self.mapQual)
+        for q in range(1,lengthMapQual):
+                if (q < float(self.parameters['minMappingQuality'])):
+                        n += 1
+        if (lengthMapQual-n > 0):
+                return 1
+        else:
+                return 0
+
+    #Retourne la moyenne de qualité des mapping de reads
+    def computeMeanMappingQuality(self):
+        meanMappingQuality = 0
+        for q in self.mapQual:
+                meanMappingQuality += q
+        return meanMappingQuality/len(self.mapQual)
 
     def __str__(self):
         a = ['\nContext']
@@ -504,8 +544,8 @@ class Variant(NewPosition):
             # Symbole marquant une délétion.
             elif item == '-':
                 deletion = 1
-                #self.totCount -= 1
-                #self.totCount += 1
+                self.forward[self.refNuc] -= 1
+                self.refCount -= 1
             # Symbole marquant une insertion. Les insertions sont comptées dans le "total depth"
             elif item == '+':
                 # On ne doit pas compter le "." et le "," dans le total depth.
@@ -533,6 +573,8 @@ class Variant(NewPosition):
             nucCount += self.reverse[el]
             nucCount += self.forward[el]
             self.nucCount[el] = nucCount
+            self.nucCount["ins"] = 0
+            self.nucCount["del"] = 0
         # Comptage global sans prendre en compte le caractère sens ou reverse de chaque évenement.
         for i in self.insertionsPlus.itervalues():
             self.nucCount["ins"] += i
@@ -612,6 +654,7 @@ class Variant(NewPosition):
         # Format de self.variationsList: [ (A, 44), (T, 10), (+AG, 50) ... ]
         self.sortedVariationsList = [x for x in self.variationsList if ((x[1] != float(0)))]
         self.sortedVariationsList = sorted(self.sortedVariationsList, key=itemgetter(1), reverse=True)
+
         # Format de self.sortedVariationsList: [ (+AG, 50), (A, 44), (T, 10) ... ]
         # On se retrouve avec un tableau de fréquences n'incluant pas la référence.
         # Tous les allèles ne matchant pas la référence devraient être décrits dans le champ ALT. Leur fréquence et leur profondeur devrait également être
@@ -647,14 +690,18 @@ class Variant(NewPosition):
             a.referenceForward = self.forward[self.refNuc]
             a.referenceReverse = self.reverse[self.refNuc]
 
-            a.Depth = float(a.Frequency) * 0.01 * float(self.totCount)
-            if (int(a.Depth) < a.Depth):
-                a.Depth += 0.000001
-            elif (int(a.Depth) > a.Depth):
-                a.Depth -= 0.000001
-            else:
-                pass
-            a.Depth = int(a.Depth)
+            a.Depth = round(float(a.Frequency) * 0.01 * float(self.totCount),0)
+      #      if (int(a.Depth) < a.Depth):
+      #          if(334317 == self.start):
+      #              print(">? {} {}".format(int(a.Depth),a.Depth))
+      #          a.Depth += 0.000001
+      #      elif (int(a.Depth) > a.Depth):
+      #          if(334317 == self.start):
+      #              print(">? {} {}".format(int(a.Depth),a.Depth))
+      #          a.Depth -= 0.000001
+      #      else:
+      #          pass
+      #      a.Depth = int(a.Depth)
 
             passing = a.getLocalFilterState()
             a.localFilter = passing
@@ -772,10 +819,6 @@ class Variant(NewPosition):
                 return
         else:
             sortedGoodAlleles = sorted(good, key=attrgetter('Frequency'), reverse=True)
-
-        #resultsToReturn = []
-        #called0 = ref
-        #called0Freq = ref.Frequency
         self.alt = []
         self.gtFreq = []
         self.gtDepth = []
@@ -1102,6 +1145,24 @@ class Variant(NewPosition):
             else: pass
         if (int(self.totCount) < int(minDepth)):
             self.failedGlobFilters.append("Global: DP < {0}".format(minDepth))
+
+############
+        MinReadQualityCov = self.computeMinReadQuality()
+        if (float(MinReadQualityCov) < float(format(self.parameters['minReadQualityCov']))):
+            self.failedGlobFilters.append("Global: MinReadQuality < {0}".format(self.parameters['minReadQuality']))
+
+        MeanReadQuality = self.computeMeanReadQuality()
+        if (float(MeanReadQuality) < float(format(self.parameters['meanReadQuality']))):
+            self.failedGlobFilters.append("Global: MeanReadQuality < {0}".format(self.parameters['meanReadQuality']))
+
+        MinMappingQualityCov = self.computeMinMappingQuality()
+        if (float(MinMappingQualityCov) < float(format(self.parameters['minMappingQualityCov']))):
+            self.failedGlobFilters.append("Global: MinMappingQuality < {0}".format(self.parameters['minMappingQuality']))       
+
+        MeanMappingQuality = self.computeMeanMappingQuality()
+        if (float(MeanMappingQuality) < float(format(self.parameters['meanMappingQuality']))):
+            self.failedGlobFilters.append("Global: MeanMappingQuality < {0}".format(self.parameters['meanMappingQuality']))     
+############
 
         self.sb = self.computeStrandBias()
 

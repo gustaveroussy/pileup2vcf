@@ -33,6 +33,9 @@ from GenoPy.DepthProfile import DepthProfile
 from GenoPy.Bins import *
 from GenoPy.VCF import *
 
+
+from GenoPy.Somatic import *
+
 DEBUG=True
 VERSION="1.3"
 DEVELOPMENT=True
@@ -58,15 +61,20 @@ if DEVELOPMENT:
 ###############################################################################
 
 parser = ArgumentParser(description=DESCRIPTION, epilog=EPILOG, prog="p2v", formatter_class=RawDescriptionHelpFormatter)
-parser.add_argument("-i", "--input", dest="input", type=str, required=True, help="Please input the VCF file outputed by IonTorrent VariantCaller")
+parser.add_argument("-i", "--input", dest="input", type=str, required=False, help="Please input the VCF file outputed by IonTorrent VariantCaller") # pass to false to launch somatic mod
 parser.add_argument("-R", "--refGenome", dest="refGenome", required=True, help="Please give as input the Fasta file of the genome you used to align your sequences")
 parser.add_argument("-r", "--regions", dest="regions", required=True, help="Please give as input a BED file describing the regions you sequenced")
 parser.add_argument("-o", "--outputPrefix", dest="prefix", default=None, required=True, help="This is a prefix that will be prepended to all default filenames. When using this option, you will get every output by default")
-
 parser.add_argument("--minFreq", dest="minFreq", type=float, required=False, help="Please input the minimum frequency of the variants you want reported. [0.01]")
 parser.add_argument("--minDepth", dest="minDepth", type=int, required=False, help="Please input minimum depth for variant calling. [100]")
 parser.add_argument("--minReadsAlt", dest="minReadsAlt", type=int, required=False, help="Minimum reads supporting ALT to call a variant [5]")
 parser.add_argument("--strandBias", dest="strandBias", type=int, required=False, help="This is supposed to be the threshold for maximum strand bias: if more than <value> percents reads are on one strand, the variant will be discarded. [90]")
+parser.add_argument("--minReadQuality", dest="minReadQuality", type=int, required=False, help="The variants supported by at least one read with base quality upper than <value> quality on the base are not discard, whereas the others are discard. [20]")
+parser.add_argument("--minReadQualityCov", dest="minReadQualityCov", type=int, required=False, help="The variants supported by at least <value> reads with base quality upper than <--minReadQuality value> quality on the base are not discard, whereas the others are discard. [1]")
+parser.add_argument("--meanReadQuality", dest="meanReadQuality", type=int, required=False, help="The variants supported by reads having a base quality mean upper than <value> are not discard, whereas the others are discarded. [20]")
+parser.add_argument("--minMappingQuality", dest="minMappingQuality", type=int, required=False, help="The variants supported by at least one read with mapping quality upper than <value> quality on the base are not discard, whereas the others are discard. [50]")
+parser.add_argument("--minMappingQualityCov", dest="minMappingQualityCov", type=int, required=False, help="The variants supported by at least <value> read with mapping quality upper than <--minMappingQuality value> quality on the base are not discard, whereas the others are discard. [1]")
+parser.add_argument("--meanMappingQuality", dest="meanMappingQuality", type=int, required=False, help="The variants supported by reads having a mapping quality mean upper than <value> are not discard, whereas the others are discarded. [50]")
 parser.add_argument("--fisherBias", dest="fisherBias", type=float, required=False, help="This is another indicator for strand bias. A Fisher Exact Test is computer for reference and alternate contigency tables. The p-value is then phred scaled. High values indicate more bias. [60]")
 parser.add_argument("--quality", dest="quality", type=int, required=False, help="This allows to filter on quality. Quality shows the distance between called allele and other alleles at this position [10]")
 parser.add_argument("--localStrandBias", dest="localStrandBias", required=False, type=int, help="Local strand bias. This checks for desequilibrium between forward and reverse strand in alternate allele [100 (deactivated)]")
@@ -76,8 +84,8 @@ parser.add_argument("-T", "--toleranceToDetectFalseStopInBigIndels", dest="toler
 
 parser.add_argument("--hetTreshold", dest="hetTreshold", required=False, type=int, help="Treshold on variant frequency to call a heterozygous genotype [20]")
 parser.add_argument("--homTreshold", dest="homTreshold", required=False, type=int, help="Treshold on variant frequency to call a homozygous genotype [75]")
-#parser.add_argument("--snpCluster", dest="snpCluster", required=False, type=int, help="How many consecutive variants to filter out as snpCluster ? [3]")
-#parser.add_argument("--snpClusterWindowSize", dest="snpClusterWindowSize", required=False, type=int, help="Size of the window used for snpCluster filter computation [20bp]")
+parser.add_argument("--snpCluster", dest="snpCluster", required=False, type=int, help="How many consecutive variants to filter out as snpCluster ? [3]")
+parser.add_argument("--snpClusterWindowSize", dest="snpClusterWindowSize", required=False, type=int, help="Size of the window used for snpCluster filter computation [20bp]")
 parser.add_argument("--minBinSize", dest="minBinSize", required=False, help="Minimum size of any Bin to be called. A bin will not be called if there is less than this number of positions. Put 0 to deactivate. [5]")
 parser.add_argument("--maxBinSize", dest="maxBinSize", required=False, help="Maximum size of any Bin to be called. A new bin will be created each time this size is reached. [50]")
 parser.add_argument("--indelWindowLength", dest="indelWindowLength", type=int, required=False, help="By default, the IndelDetector will buffer X nucleotides before starting scanning. You can change X with this argument.")
@@ -89,7 +97,12 @@ parser.add_argument('--disableQualityScoreCheck', dest="disableQualityScoreCheck
 parser.add_argument("--clinics", action='store_true', dest="clinics", required=False, help="Presets all the filters for clinical uses. Please not that this cannot be overwritten by parameters you would enter.")
 parser.add_argument("--nofilter", action='store_true', dest="nofilter", required=False, help="Disables all filters. Please note that this cannot be overwritten by parameters you would enter.")
 parser.add_argument('--gsc', dest="gsc", default=False, action="store_true", required=False, help="Somatic genetics thresholds. Please look at the code before use !")
-
+parser.add_argument('--somatic', dest="somatic", default=False, action="store_true", required=False, help="Launch somatic mod. Execute the pipeline for both Normal and Tumoral mpileup, and compare variants listed in each conditions.")
+parser.add_argument("--inputNormal", dest="inputNormal", type=str, required=False, help="Please input the mpileup Normal file")
+parser.add_argument("--inputTumoral", dest="inputTumoral", type=str, required=False, help="Please input the mpileup Tumoral file")
+parser.add_argument("--methodFDR", dest="methodFDR", type=str, required=False, help="Choose between the FDR calculation method from : bonferroni, fdr_bh or fdr_tsbh [fdr_bh]")
+parser.add_argument("--alphaFDR", dest="alphaFDR", type=float, required=False, help="Set the alpha error for the multiple test correction [0.05]")
+parser.add_argument("--mutipleTestSum", dest="mutipleTestSum", default=True, action="store_false", required=False, help="If multiple alternatives their frquencies are add in order to compute the fisher exact test for 2*2 contingency table in all cases [True]")
 parser.add_argument('--ncpu', dest='ncpu', help=SUPPRESS)
 parser.add_argument('--tmpDir', dest='tmpDir', help=SUPPRESS)
 parser.add_argument('--overrideInputPP2V', dest="overrideInput", help=SUPPRESS)
@@ -99,7 +112,6 @@ parser.add_argument('--silent', dest='silent', action="store_true", help=SUPPRES
 # Parametres
 
 defaults = {'fisherBias': 60, 'disableQualityScoreCheck': False, 'hetTreshold': 20, 'quality': 10, 'minDepth': 100, 'maxDeltaDelta': 400, 'll': 1, 'tolerance': 0.15, 'strandBias': 90, 'localStrandBias': 100, 'homTreshold': 75, 'minDeltaDepth': 200, 'minBinSize': 5, 'minReadsAlt': 5, 'maxBinSize': 50, 'indelWindowLength': 50, 'gsc': False, 'minFreq': 0.01}
-
 
 args = parser.parse_args()
 parameters = defaultdict(bool)
@@ -115,6 +127,12 @@ if args.clinics is True:
     parameters['homTreshold'] = 70 if args.homTreshold is None else int(args.homTreshold)
     parameters['toleranceForBigIndels'] = 0.20 if args.tolerance is None else float(args.tolerance)
     parameters['minDeltaDepth'] = 110 if args.minDeltaDepth is None else int(args.minDeltaDepth)
+    parameters['minReadQuality'] = 20 if args.minReadQuality is None else float(args.minReadQuality)
+    parameters['minReadQualityCov'] = 1 if args.minReadQualityCov is None else float(args.minReadQualityCov)
+    parameters['meanReadQuality'] = 20 if args.meanReadQuality is None else float(args.meanReadQuality)
+    parameters['minMappingQuality'] = 50 if args.minMappingQuality is None else float(args.minMappingQuality)
+    parameters['minMappingQualityCov'] = 1 if args.minMappingQualityCov is None else float(args.minMappingQualityCov)
+    parameters['meanMappingQuality'] = 50 if args.meanMappingQuality is None else float(args.meanMappingQuality)
     
 elif args.gsc is True:
     parameters['minFreq'] = 5 if args.minFreq is None else float(args.minFreq)
@@ -128,6 +146,12 @@ elif args.gsc is True:
     parameters['homTreshold'] = 75 if args.homTreshold is None else int(args.homTreshold)
     parameters['toleranceForBigIndels'] = 0.15 if args.tolerance is None else float(args.tolerance)
     parameters['minDeltaDepth'] = 200 if args.minDepthDepth is None else int(args.minDeltaDepth)
+    parameters['minReadQuality'] = 20 if args.minReadQuality is None else float(args.minReadQuality)
+    parameters['minReadQualityCov'] = 1 if args.minReadQualityCov is None else float(args.minReadQualityCov)
+    parameters['meanReadQuality'] = 20 if args.meanReadQuality is None else float(args.meanReadQuality)
+    parameters['minMappingQuality'] = 50 if args.minMappingQuality is None else float(args.minMappingQuality)
+    parameters['minMappingQualityCov'] = 1 if args.minMappingQualityCov is None else float(args.minMappingQualityCov)
+    parameters['meanMappingQuality'] = 50 if args.meanMappingQuality is None else float(args.meanMappingQuality)
     
 elif args.nofilter is True:
     parameters['minFreq'] = 0 if args.minFreq is None else float(args.minFreq)
@@ -141,6 +165,12 @@ elif args.nofilter is True:
     parameters['homTreshold'] = 75 if args.homTreshold is None else int(args.homTreshold)
     parameters['toleranceForBigIndels'] = 0.20 if args.tolerance is None else float(args.tolerance)
     parameters['minDeltaDepth'] = 200 if args.minDeltaDepth is None else int(args.minDeltaDepth)
+    parameters['minReadQuality'] = 0 if args.minReadQuality is None else float(args.minReadQuality)
+    parameters['minReadQualityCov'] = 0 if args.minReadQualityCov is None else float(args.minReadQualityCov)
+    parameters['meanReadQuality'] = 0 if args.meanReadQuality is None else float(args.meanReadQuality)
+    parameters['minMappingQuality'] = 0 if args.minMappingQuality is None else float(args.minMappingQuality)
+    parameters['minMappingQualityCov'] = 0 if args.minMappingQualityCov is None else float(args.minMappingQualityCov)
+    parameters['meanMappingQuality'] = 0 if args.meanMappingQuality is None else float(args.meanMappingQuality)
     
 else:
     parameters['minFreq'] = float(args.minFreq) if args.minFreq is not None else float(defaults['minFreq'])
@@ -154,121 +184,135 @@ else:
     parameters['hetTreshold'] = int(args.hetTreshold) if args.hetTreshold is not None else int(defaults['hetTreshold'])
     parameters['homTreshold'] = int(args.homTreshold) if args.homTreshold is not None else int(defaults['homTreshold'])
     parameters['minDeltaDepth'] = int(args.minDeltaDepth) if args.minDeltaDepth is not None else int(defaults['minDeltaDepth'])
-    
-parameters['prefix'] = args.prefix
-if parameters['prefix'] is not None:
-    parameters['output'] = parameters['prefix'] + ".GoodVariants.vcf"
-    parameters['statistics'] = parameters['prefix'] + ".statistics"
-    parameters['outputBins'] = parameters['prefix'] + ".bins"
-    parameters['depthProfile'] = parameters['prefix'] + ".depthprofile"
-    parameters['outputTrash'] = parameters['prefix'] + ".Trash.vcf"
-    parameters['regionsw'] = parameters['prefix'] + ".bed"
+    parameters['minReadQuality'] = 20 if args.minReadQuality is None else float(args.minReadQuality)
+    parameters['minReadQualityCov'] = 1 if args.minReadQualityCov is None else float(args.minReadQualityCov)
+    parameters['meanReadQuality'] = 20 if args.meanReadQuality is None else float(args.meanReadQuality)
+    parameters['minMappingQuality'] = 50 if args.minMappingQuality is None else float(args.minMappingQuality)
+    parameters['minMappingQualityCov'] = 1 if args.minMappingQualityCov is None else float(args.minMappingQualityCov)
+    parameters['meanMappingQuality'] = 50 if args.meanMappingQuality is None else float(args.meanMappingQuality)
 
-parameters['input'] = args.input
-parameters['minBinSize'] = int(args.minBinSize) if args.minBinSize is not None else int(defaults['minBinSize'])
-parameters['maxBinSize'] = int(args.maxBinSize) if args.maxBinSize is not None else int(defaults['maxBinSize'])
-parameters['regions'] = args.regions
-parameters['sName'] = args.input.rstrip('.mpileup') if args.input.endswith('.mpileup') else args.input.rstrip('.pileup')
-parameters['onlyBed'] = True
-parameters['ll'] = int(args.ll) if args.ll is not None else int(defaults['ll'])
-parameters['refGenome'] = args.refGenome
-parameters['maxDeltaDelta'] = int(args.maxDeltaDelta) if args.maxDeltaDelta is not None else int(defaults['maxDeltaDelta'])
+parameters['somatic'] = args.somatic
+parameters['inputNormal'] = args.inputNormal
+parameters['inputTumoral'] = args.inputTumoral
+parameters['methodFDR'] = "fdr_bh" if args.methodFDR is None else str(args.methodFDR)
+parameters['alphaFDR'] = 0.05 if args.alphaFDR is None else float(args.alphaFDR)
+parameters['mutipleTestSum'] = True if args.mutipleTestSum is None else False
 
-parameters['IndelWindowLength'] = args.indelWindowLength if args.indelWindowLength is not None else defaults['indelWindowLength']
-parameters['DisableQualityScoreCheck'] = args.disableQualityScoreCheck if args.disableQualityScoreCheck is not None else defaults['disableQualityScoreCheck']
+if (parameters['somatic'] == False):
+	parameters['prefix'] = args.prefix
+	if parameters['prefix'] is not None:
+	    parameters['output'] = parameters['prefix'] + ".GoodVariants.vcf"
+	    parameters['statistics'] = parameters['prefix'] + ".statistics"
+	    parameters['outputBins'] = parameters['prefix'] + ".bins"
+	    parameters['depthProfile'] = parameters['prefix'] + ".depthprofile"
+	    parameters['outputTrash'] = parameters['prefix'] + ".Trash.vcf"
+	    parameters['regionsw'] = parameters['prefix'] + ".bed"
 
-if args.overrideInput: parameters['input'] = args.overrideInput
-if args.overrideOutput: parameters['prefix'] = args.overrideOutput
-if args.silent: parameters['ll'] = -1
+	parameters['input'] = args.input
+	parameters['minBinSize'] = int(args.minBinSize) if args.minBinSize is not None else int(defaults['minBinSize'])
+	parameters['maxBinSize'] = int(args.maxBinSize) if args.maxBinSize is not None else int(defaults['maxBinSize'])
+	parameters['regions'] = args.regions
+	parameters['sName'] = args.input.rstrip('.mpileup') if args.input.endswith('.mpileup') else args.input.rstrip('.pileup')
+	parameters['onlyBed'] = True
+	parameters['ll'] = int(args.ll) if args.ll is not None else int(defaults['ll'])
+	parameters['refGenome'] = args.refGenome
+	parameters['maxDeltaDelta'] = int(args.maxDeltaDelta) if args.maxDeltaDelta is not None else int(defaults['maxDeltaDelta'])
 
+	parameters['IndelWindowLength'] = args.indelWindowLength if args.indelWindowLength is not None else defaults['indelWindowLength']
+	parameters['DisableQualityScoreCheck'] = args.disableQualityScoreCheck if args.disableQualityScoreCheck is not None else defaults['disableQualityScoreCheck']
 
+	if args.overrideInput: parameters['input'] = args.overrideInput
+	if args.overrideOutput: parameters['prefix'] = args.overrideOutput
+	if args.silent: parameters['ll'] = -1
 
-io = IO(parameters['ll'])
-parameters['io'] = io
-io.log("Command line: {}".format(' '.join(sys.argv)), loglevel=1)
-io.register("mpileupCount", parameters['input'], "r")
-getLinesH = io.getIO("mpileupCount")
+	io = IO(parameters['ll'])
+	parameters['io'] = io
+	io.log("Command line: {}".format(' '.join(sys.argv)), loglevel=1)
+	io.register("mpileupCount", parameters['input'], "r")
+	getLinesH = io.getIO("mpileupCount")
 
-lineNb = getLineCount(getLinesH)
+	lineNb = getLineCount(getLinesH)
 
-parameters['lineNb'] = lineNb
-io.log(parameters, loglevel=2)
+	parameters['lineNb'] = lineNb
+	io.log(parameters, loglevel=2)
 
-io.giveupIO("mpileupCount")
+	io.giveupIO("mpileupCount")
 
-io.register("mpileup", parameters['input'], "r")
-io.register("binningW", parameters['outputBins'], "w")
-io.register("depthProfile", parameters['depthProfile'] + ".withoutMut", "w")
-io.register("statistics", parameters['statistics'], "w")
-io.register("GoodVariants", parameters['output'], "w")
-io.register("TrashedVariants", parameters['outputTrash'], 'w')
-io.register('regions', parameters['regions'], 'r')
-io.register("bedW", parameters['regionsw'], "w")
+	io.register("mpileup", parameters['input'], "r")
+	io.register("binningW", parameters['outputBins'], "w")
+	io.register("depthProfile", parameters['depthProfile'] + ".withoutMut", "w")
+	io.register("statistics", parameters['statistics'], "w")
+	io.register("GoodVariants", parameters['output'], "w")
+	io.register("TrashedVariants", parameters['outputTrash'], 'w')
+	io.register('regions', parameters['regions'], 'r')
+	io.register("bedW", parameters['regionsw'], "w")
 
-# Instanciation de Bed et parsing du fichier.
-bed = Bed()
-bedIn = io.getIO('regions')
-bed.parse(bedIn)
-io.giveupIO('regions')
+	# Instanciation de Bed et parsing du fichier.
+	bed = Bed()
+	bedIn = io.getIO('regions')
+	bed.parse(bedIn)
+	io.giveupIO('regions')
 
-# Instanciation de MPileup et parsing du fichier.
-pileuph = io.getIO('mpileup')
-depthProfile = DepthProfile(io.getIO('depthProfile'), io)
-pileup = MPileup(pileuph, depthProfile, io, parameters, bed=bed)
+	# Instanciation de MPileup et parsing du fichier.
+	pileuph = io.getIO('mpileup')
+	depthProfile = DepthProfile(io.getIO('depthProfile'), io)
+	pileup = MPileup(pileuph, depthProfile, io, parameters, bed=bed)
 
-unclassified_variants = pileup.parse()
-good, trashed = unclassified_variants.classify_variants().getCollections()
-AllCollections = AllClassifiedVariantCollections(parameters)
-AllCollections.add('Good', good)
-AllCollections.add('Trash', trashed)
-# We will parse depthProfile and write it again to integrate variants (sadly, I have no other choice)
-io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
-io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
+	unclassified_variants = pileup.parse(False,False)
+	good, trashed = unclassified_variants.classify_variants().getCollections()
+	AllCollections = AllClassifiedVariantCollections(parameters)
+	AllCollections.add('Good', good)
+	AllCollections.add('Trash', trashed)
+	# We will parse depthProfile and write it again to integrate variants (sadly, I have no other choice)
+	io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
+	io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
 
-depthProfile.addVariants(unclassified_variants)
+	depthProfile.addVariants(unclassified_variants)
 
-io.giveupIO('mpileup')
-io.unregister('depthProfileAddMutR')
-io.unregister('depthProfileAddMutW')
+	io.giveupIO('mpileup')
+	io.unregister('depthProfileAddMutR')
+	io.unregister('depthProfileAddMutW')
 
-io.register("depthProfileR1", parameters['depthProfile'], "r")
-io.register("depthProfileR2", parameters['depthProfile'], "r")
-indels = scanForIndels(parameters)
-allIndels = InDelDetector(indels)
-allIndels = allIndels.extract().genotype(parameters).getIndels()
-readDepthProfile = io.getIO('depthProfileR1')
-binningW = io.getIO('binningW')
-binning = Binning(binningW, parameters)
-binning.bin(readDepthProfile)
+	io.register("depthProfileR1", parameters['depthProfile'], "r")
+	io.register("depthProfileR2", parameters['depthProfile'], "r")
+	indels = scanForIndels(parameters)
+	allIndels = InDelDetector(indels)
+	allIndels = allIndels.extract().genotype(parameters).getIndels()
+	readDepthProfile = io.getIO('depthProfileR1')
+	binningW = io.getIO('binningW')
+	binning = Binning(binningW, parameters)
+	binning.bin(readDepthProfile)
 
-#pileup.addIndelsToVCF()
-io.giveupIO('binningW')
-io.giveupIO('depthProfileR1')
-io.giveupIO('depthProfileR2')
+	#pileup.addIndelsToVCF()
+	io.giveupIO('binningW')
+	io.giveupIO('depthProfileR1')
+	io.giveupIO('depthProfileR2')
 
-# Output des résultats.
-# Binning
-#io.register('binningR', parameters['outputBins'], "r")
-#binningR = io.getIO('binningR')
-# # Regular: show all features
-#pileup.printBinning(binningR)
-# # Bed: show each region in plot.
-#pileup.alternateBinningPrinting(binningR)
+	# Output des résultats.
+	# Binning
+	#io.register('binningR', parameters['outputBins'], "r")
+	#binningR = io.getIO('binningR')
+	# # Regular: show all features
+	#pileup.printBinning(binningR)
+	# # Bed: show each region in plot.
+	#pileup.alternateBinningPrinting(binningR)
 
-goodVCF = VCF(good, parameters, indelsToAdd=allIndels)
-goodVCF.printVCF(io.getIO('GoodVariants'), printHeader=True)
-#pileup.printVCF(goodVariants)
-io.giveupIO('GoodVariants')
-trashVCF = VCF(trashed, parameters, indelsToAdd=allIndels)
-trashVCF.printVCF(io.getIO('TrashedVariants'), printHeader=True)
-io.giveupIO('TrashedVariants')
+	goodVCF = VCF(good, parameters, indelsToAdd=allIndels)
+	goodVCF.printVCF(io.getIO('GoodVariants'), printHeader=True)
+	#pileup.printVCF(goodVariants)
+	io.giveupIO('GoodVariants')
+	trashVCF = VCF(trashed, parameters, indelsToAdd=allIndels)
+	trashVCF.printVCF(io.getIO('TrashedVariants'), printHeader=True)
+	io.giveupIO('TrashedVariants')
 
-stath = io.getIO('statistics')
-AllCollections.do_stats(stath)
-io.giveupIO('statistics')
+	stath = io.getIO('statistics')
+	AllCollections.do_stats(stath)
+	io.giveupIO('statistics')
 
-bedW = io.getIO('bedW')
-bed.write(bedW)
-io.giveupIO('bedW')
-io.endlog()
-sys.exit(io.unregister("all"))
+	bedW = io.getIO('bedW')
+	bed.write(bedW)
+	io.giveupIO('bedW')
+	io.endlog()
+	sys.exit(io.unregister("all"))
+else:
+	somaticMod(parameters, args, defaults)

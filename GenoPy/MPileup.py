@@ -3,8 +3,14 @@
 
 '''
 Created on 3 août 2015
+Last Update: 24 novembre 2016
 
-@author: boursin
+@author: Yannick Boursin
+@contact: yannick.boursin@gustaveroussy.fr
+@license: GNU GPLv3
+@organization: Gustave Roussy
+@version: 1.2
+@todo:
 '''
 
 #from matplotlib import pyplot as plt
@@ -48,7 +54,7 @@ class MPileup(object):
 
     # Fonction permettant de parser le fichier mpileup et de définir pour chaque ligne un objet variant. Cet objet est ammené à être callé ou non lors de l'étape
     # getFilterState. Si passFilter = cur.getFilterState() = True, alors on a affaire à un variant.
-    def parse(self):
+    def parse(self,depthProfileKeepInMemory, depthProfileBinDynamically):
         '''This takes as input the mpileup file and parses it. It has disparate functions, but this is the data provider function.
         * Returns: self.arrayPileup
         '''
@@ -111,7 +117,7 @@ class MPileup(object):
             # A ce stade, on enregistre tous les objets variants en se basant uniquement sur la présence éventuelle d'un nucléotide non ref. Le problème de cette méthode est qu'elle
             # peut entrainer beaucoup de variants selon la qualité du séquençage...
             # On verra bien ce que cela donne. L'étape suivante est
-        self.dph.writeDepthProfile() # We write the last positions in depthProfile before returning
+        self.dph.writeDepthProfile(depthProfileKeepInMemory, depthProfileBinDynamically) # We write the last positions in depthProfile before returning
         self.log("Skipped {} positions as they were not in Bed.".format(skipped), loglevel=2)
         return UnclassifiedVariantCollection(self.arrayPileup, self.parameters)
     

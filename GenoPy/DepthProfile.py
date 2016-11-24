@@ -3,13 +3,13 @@
 
 '''
 Created on 3 août 2015
-Last Update: 27 avril 2016
+Last Update: 24 novembre 2016
 
 @author: Yannick Boursin
 @contact: yannick.boursin@gustaveroussy.fr
 @license: GNU GPLv3
 @organization: Gustave Roussy
-@version: 1.3
+@version: 1.4
 @todo: Inspect keepInMemory and binDynamically parameters
 '''
 
@@ -51,7 +51,7 @@ class DepthProfile(object):
         self.wroteHeader = False
         self.io = io
 
-    def writeDepthProfile(self, keepInMemory=False, binDynamically=False):
+    def writeDepthProfile(self, keepInMemory, binDynamically):
         '''Method that dumps depthProfile data
         
         This method is intended to dump DepthProfile data. It can do so in different ways:

@@ -1,5 +1,17 @@
 # encoding: utf-8
 
+'''
+Created on ???
+Last Update: 24 novembre 2016
+
+@author: Yannick Boursin
+@contact: yannick.boursin@gustaveroussy.fr
+@license: GNU GPLv3
+@organization: Gustave Roussy
+@version: 1.2
+@todo:
+'''
+
 class VCF(object):
     '''VCF class
     This class is intended to take in charge VCF output format.'''
@@ -64,7 +76,14 @@ class VCF(object):
                 except: el.calledGenotype='NA'
                 try: el.reference = str(el.reference)
                 except: el.reference = "NA"
-    
+
+		#Round problem du to multiple rounds 
+		comma = ",";
+		gtFreqList = [float(i) for i in el.gtFreq.split(",")]
+                if(sum(gtFreqList)!=100):
+                    gtFreqList[0] += 100 - float(sum(gtFreqList))
+		gtFreqList = [str(i) for i in gtFreqList]
+		el.gtFreq = comma.join(gtFreqList)
                 print >>fh, "{0}\t{1}\t.\t{2}\t{3}\t{4}\t{19}\tA={7};C={8};T={9};G={10};LFS={17};GFS={14};LSB={16};GSB={15};INS={12};DEL={13};TDP={11}\tGT:FREQ:DP\t{18}:{5}:{6}".format(el.chr,
                                                                                             el.start,
                                                                                             el.reference,
