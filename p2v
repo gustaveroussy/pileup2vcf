@@ -103,6 +103,13 @@ parser.add_argument("--inputTumoral", dest="inputTumoral", type=str, required=Fa
 parser.add_argument("--methodFDR", dest="methodFDR", type=str, required=False, help="Choose between the FDR calculation method from : bonferroni, fdr_bh or fdr_tsbh [fdr_bh]")
 parser.add_argument("--alphaFDR", dest="alphaFDR", type=float, required=False, help="Set the alpha error for the multiple test correction [0.05]")
 parser.add_argument("--mutipleTestSum", dest="mutipleTestSum", default=True, action="store_false", required=False, help="If multiple alternatives their frquencies are add in order to compute the fisher exact test for 2*2 contingency table in all cases [True]")
+
+
+parser.add_argument('--windowKAll', dest="windowKAll", default=False, action="store_true", required=False, help="Moving window of size --kSize in order to compute the BED regions according to their coverage by all variants (all mpileup lines except lines without variants) and SNP cluster. Filter the variants having more than --clusterN others variants in a window of --sizeK. [False]")
+parser.add_argument('--windowKGood', dest="windowKGood", default=False, action="store_true", required=False, help="Moving window of size --kSize in order to compute the BED regions according to their coverage by good variants and SNP cluster (Useless if --windowKAll is set). Do not filter any variant, just compute coverage and group cluster SNP files. [False]")
+parser.add_argument('--sizeK', dest="sizeK", required=False, help="Size (in base) of the moving window in order to compute the BED regions according to their coverage by good variants. Must be an integer pair and positive. [100]")
+parser.add_argument('--clusterN', dest="clusterN", required=False, help="Maximal number of SNP in a window of --sizeK (in base). Must be an positive integer. [10]")
+
 parser.add_argument('--ncpu', dest='ncpu', help=SUPPRESS)
 parser.add_argument('--tmpDir', dest='tmpDir', help=SUPPRESS)
 parser.add_argument('--overrideInputPP2V', dest="overrideInput", help=SUPPRESS)
@@ -191,6 +198,16 @@ else:
     parameters['minMappingQualityCov'] = 1 if args.minMappingQualityCov is None else float(args.minMappingQualityCov)
     parameters['meanMappingQuality'] = 50 if args.meanMappingQuality is None else float(args.meanMappingQuality)
 
+#For moving window
+if(args.windowKGood or args.windowKAll):
+    if(int(args.sizeK) % 2 != 0 or int(args.sizeK) < 0):
+        print "[Error] --SizeK argument must be a pair and positive integer"
+	sys.exit()
+    else:
+        parameters['sizeK'] = 100 if args.sizeK is None else int(args.sizeK)
+    parameters['clusterN'] = 10 if args.clusterN is None else int(args.clusterN)
+
+#For somatic mod
 parameters['somatic'] = args.somatic
 parameters['inputNormal'] = args.inputNormal
 parameters['inputTumoral'] = args.inputTumoral
@@ -258,8 +275,16 @@ if (parameters['somatic'] == False):
 	depthProfile = DepthProfile(io.getIO('depthProfile'), io)
 	pileup = MPileup(pileuph, depthProfile, io, parameters, bed=bed)
 
-	unclassified_variants = pileup.parse(False,False)
+	if(args.windowKAll):
+		io.register("WindowKAllCov", parameters['prefix'] + ".All.WindowK.cov.bed", "w") #Fichier pour la couverture
+		io.register("WindowKAllGroup", parameters['prefix'] + ".All.WindowK.group", "w") #Fichier pour l'équivalence des groupes 
+		unclassified_variants = pileup.parseAndWindowK(False, False, io.getIO('WindowKAllCov'), io.getIO('WindowKAllGroup'), parameters['sizeK'], parameters['clusterN'], True)
+		io.giveupIO('WindowKAllCov')
+		io.giveupIO('WindowKAllGroup')
+	else:
+		unclassified_variants = pileup.parse(False,False)
 	good, trashed = unclassified_variants.classify_variants().getCollections()
+
 	AllCollections = AllClassifiedVariantCollections(parameters)
 	AllCollections.add('Good', good)
 	AllCollections.add('Trash', trashed)
@@ -298,6 +323,13 @@ if (parameters['somatic'] == False):
 	#pileup.alternateBinningPrinting(binningR)
 
 	goodVCF = VCF(good, parameters, indelsToAdd=allIndels)
+	if(args.windowKGood):
+		io.register("WindowKGoodCov", parameters['prefix'] + ".GoodVariants.WindowK.cov.bed", "w")
+		io.register("WindowKGoodGroup", parameters['prefix'] + ".GoodVariants.WindowK.group", "w")
+		goodVCF.printWindowK(io.getIO('WindowKGoodCov'), io.getIO('WindowKGoodGroup'), parameters['sizeK'], True)
+		io.giveupIO('WindowKGoodCov')
+		io.giveupIO('WindowKGoodGroup')
+
 	goodVCF.printVCF(io.getIO('GoodVariants'), printHeader=True)
 	#pileup.printVCF(goodVariants)
 	io.giveupIO('GoodVariants')

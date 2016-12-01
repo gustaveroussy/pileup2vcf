@@ -72,16 +72,19 @@ class UnclassifiedVariantCollection(object):
         genotypeVariant method shouldn't be there I think, i will link it inside Variant'''
         self.counter += 1
         refAllele, goodAlleles, trashedAlleles = cur.call()
-        if goodAlleles is None and trashedAlleles is None:
-            return None
-        elif goodAlleles is None and trashedAlleles is not None:
+        if cur.globalFilter != True: #Si le filtre global sur cluster SNP est completé alors globalFilter != True
             self.trash.add(cur)
-        elif goodAlleles is not None and trashedAlleles is not None:
-            self.good.add(cur)
-        elif goodAlleles is not None and trashedAlleles is None:
-            self.good.add(cur)
         else:
-            self.io.log('I do not understand', loglevel=1)
+            if goodAlleles is None and trashedAlleles is None:
+                return None
+            elif goodAlleles is None and trashedAlleles is not None:
+                self.trash.add(cur)
+            elif goodAlleles is not None and trashedAlleles is not None:
+                self.good.add(cur)
+            elif goodAlleles is not None and trashedAlleles is None:
+                self.good.add(cur)
+            else:
+                self.io.log('I do not understand', loglevel=1)
         varHash = '{}-{}'.format(cur.chr, cur.start)
         self.varDic[varHash] = (len(cur.goodAlleles), len(cur.trashedAlleles))
             
@@ -90,6 +93,7 @@ class UnclassifiedVariantCollection(object):
     def getCollections(self):
         '''Getter function for good and trash collection'''
         return self.good, self.trash
+
 
 class AllClassifiedVariantCollections(object):
     '''This class gathers all other ClassifiedVariantCollection classes'''
@@ -131,6 +135,14 @@ class ClassifiedVariantCollection(object):
         #self.statistics.add(cur)
         self.counter += 1
         self.vl.append(cur)
+
+    def remove(self, cur):
+        '''Method intended to remove a single variant to a classified collection
+        
+        * Input: <Variant> cur'''
+        #self.statistics.add(cur)
+        self.counter -= 1
+        self.vl.remove(cur)
         
     def getAll(self):
         '''Returns a list of all classified variants'''
@@ -326,7 +338,7 @@ class Variant(NewPosition):
         - getLocalFilterState
         - computeIndelFreq
         - computeStrandBias
-        - titv
+        - titvcall
         - statsAllAllele
         - computeFisherStrandBias
         - isVariant
@@ -369,6 +381,12 @@ class Variant(NewPosition):
         # Champs de la qualité
         self.minReadQuality = 0
         self.minMappingQuality = 0
+
+        # Champs du groupe de cluster SNP
+        self.clusterGP = 0
+
+        #Champs pour les filtres
+        self.globalFilter = ""
 
     #Retourne le nombre de reads possèdant une qualité de base supérieure au seuil
 #Sauvergarder le range de qualité ici (définir de manière globale)
@@ -824,7 +842,6 @@ class Variant(NewPosition):
         self.gtDepth = []
         self.LSB = []
         self.LFS = []
-
         self.majorAllele = sortedGoodAlleles[0]
         i = 0
         ref.rank = 0
@@ -1112,7 +1129,7 @@ class Variant(NewPosition):
         else:
             forwardAlt = float(self.forward[allele])
             reverseAlt = float(self.reverse[allele])
-        # On lance le test proprement dit
+        # On lance le test proprementglobalFilter dit
         #print "fwr: {0}, rvr: {1}, fwa: {2}, rva: {3}".format(forwardRef, reverseRef, forwardAlt, reverseAlt)
         return fi.computeFisher(forwardRef, reverseRef, forwardAlt, reverseAlt)
 
@@ -1136,6 +1153,10 @@ class Variant(NewPosition):
         self.computeFreq()
         passFilter = True
         self.failedGlobFilters = []
+#######################
+        if(self.globalFilter!=""):
+            self.failedGlobFilters.append(self.globalFilter)
+#######################
         if ((self.globalVarFreq == 0) or (int(self.totCount) == 0)):
             if (float(self.frequencies["del"]) == 0):
                 self.failedGlobFilters.append("NoVariant")
@@ -1146,7 +1167,6 @@ class Variant(NewPosition):
         if (int(self.totCount) < int(minDepth)):
             self.failedGlobFilters.append("Global: DP < {0}".format(minDepth))
 
-############
         MinReadQualityCov = self.computeMinReadQuality()
         if (float(MinReadQualityCov) < float(format(self.parameters['minReadQualityCov']))):
             self.failedGlobFilters.append("Global: MinReadQuality < {0}".format(self.parameters['minReadQuality']))
@@ -1162,7 +1182,6 @@ class Variant(NewPosition):
         MeanMappingQuality = self.computeMeanMappingQuality()
         if (float(MeanMappingQuality) < float(format(self.parameters['meanMappingQuality']))):
             self.failedGlobFilters.append("Global: MeanMappingQuality < {0}".format(self.parameters['meanMappingQuality']))     
-############
 
         self.sb = self.computeStrandBias()
 

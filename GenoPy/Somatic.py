@@ -99,11 +99,20 @@ def somaticMod(parameters, args, defaults):
 	depthProfileTumoral = DepthProfile(io.getIO('depthProfile'), io)
 	pileup = MPileup(pileuph, depthProfileTumoral, io, parameters, bed=bed)
 
-	unclassified_variants = pileup.parse(True,False)
+	if(args.windowKAll):
+		io.register("WindowKAllCov", parameters['prefix'] + ".T.All.WindowK.cov.bed", "w") #Fichier pour la couverture
+		io.register("WindowKAllGroup", parameters['prefix'] + ".T.All.WindowK.group", "w") #Fichier pour l'équivalence des groupes 
+		unclassified_variants = pileup.parseAndWindowK(False, False, io.getIO('WindowKAllCov'), io.getIO('WindowKAllGroup'), parameters['sizeK'], parameters['clusterN'], True)
+		io.giveupIO('WindowKAllCov')
+		io.giveupIO('WindowKAllGroup')
+	else:
+		unclassified_variants = pileup.parse(False,False)
 	good, trashed = unclassified_variants.classify_variants().getCollections()
+
 	AllCollections = AllClassifiedVariantCollections(parameters)
 	AllCollections.add('Good', good)
 	AllCollections.add('Trash', trashed)
+
 	# We will parse depthProfileTumoral and write it again to integrate variants (sadly, I have no other choice)
 	io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
 	io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
@@ -130,6 +139,13 @@ def somaticMod(parameters, args, defaults):
 	io.giveupIO('depthProfileR2')
 
 	goodVCFTumoral = VCF(good, parameters, indelsToAdd=allIndels)
+	if(args.windowKGood):
+		io.register("WindowKGoodCov", parameters['prefix'] + ".T.GoodVariants.WindowK.cov.bed", "w")
+		io.register("WindowKGoodGroup", parameters['prefix'] + ".T.GoodVariants.WindowK.group", "w")
+		goodVCFTumoral.printWindowK(io.getIO('WindowKGoodCov'), io.getIO('WindowKGoodGroup'), parameters['sizeK'], True)
+		io.giveupIO('WindowKGoodCov')
+		io.giveupIO('WindowKGoodGroup')
+
 	goodVCFTumoral.printVCF(io.getIO('GoodVariants'), printHeader=True)
 	#pileup.printVCF(goodVariants)
 	io.giveupIO('GoodVariants')
@@ -223,8 +239,16 @@ def somaticMod(parameters, args, defaults):
 	depthProfileNormal = DepthProfile(io.getIO('depthProfile'), io)
 	pileup = MPileup(pileuph, depthProfileNormal, io, parameters, bed=bed)
 
-	unclassified_variants = pileup.parse(True,False)
+	if(args.windowKAll):
+		io.register("WindowKAllCov", parameters['prefix'] + ".N.All.WindowK.cov.bed", "w") #Fichier pour la couverture
+		io.register("WindowKAllGroup", parameters['prefix'] + ".N.All.WindowK.group", "w") #Fichier pour l'équivalence des groupes 
+		unclassified_variants = pileup.parseAndWindowK(False, False, io.getIO('WindowKAllCov'), io.getIO('WindowKAllGroup'), parameters['sizeK'], parameters['clusterN'], True)
+ 		io.giveupIO('WindowKAllCov')
+ 		io.giveupIO('WindowKAllGroup')
+	else:
+		unclassified_variants = pileup.parse(False,False)
 	good, trashed = unclassified_variants.classify_variants().getCollections()
+	
 	AllCollections = AllClassifiedVariantCollections(parameters)
 	AllCollections.add('Good', good)
 	AllCollections.add('Trash', trashed)
@@ -238,7 +262,6 @@ def somaticMod(parameters, args, defaults):
 	io.giveupIO('mpileup')
 	io.unregister('depthProfileAddMutR')
 	io.unregister('depthProfileAddMutW')
-
 
 	io.register("depthProfileR1", parameters['depthProfile'], "r")
 	io.register("depthProfileR2", parameters['depthProfile'], "r")
@@ -256,6 +279,13 @@ def somaticMod(parameters, args, defaults):
 	io.giveupIO('depthProfileR2')
 
 	goodVCFNormal = VCF(good, parameters, indelsToAdd=allIndels)
+	if(args.windowKGood):
+		io.register("WindowKGoodCov", parameters['prefix'] + ".N.GoodVariants.WindowK.cov.bed", "w")
+		io.register("WindowKGoodGroup", parameters['prefix'] + ".N.GoodVariants.WindowK.group", "w")
+		goodVCFNormal.printWindowK(io.getIO('WindowKGoodCov'), io.getIO('WindowKGoodGroup'), parameters['sizeK'], True)
+		io.giveupIO('WindowKGoodCov')
+		io.giveupIO('WindowKGoodGroup')
+
 	goodVCFNormal.printVCF(io.getIO('GoodVariants'), printHeader=True)
 	#pileup.printVCF(goodVariants)
 	io.giveupIO('GoodVariants')
@@ -316,6 +346,8 @@ def somaticMod(parameters, args, defaults):
 	for goodTumoral in goodVCFTumoral.collection.getAll():
 		booleanHaveHomolog = False
 		for goodNormal in goodVCFNormal.collection.getAll():
+			if (goodNormal.chr == goodTumoral.chr and goodNormal.start == goodTumoral.start and goodNormal.reference != goodTumoral.reference):
+				print("{} {} {} {} is a case of reference deletion in only one of the 2 datasets".format(goodNormal.chr,goodNormal.start,goodNormal.reference,goodTumoral.reference))
 			if (goodNormal.chr == goodTumoral.chr and goodNormal.start == goodTumoral.start and goodNormal.reference == goodTumoral.reference):
 				booleanHaveHomolog = True #Position is a variant in both Normal and tumoral datasets
 				goodTumoralAlt = goodTumoral.alt.split(",")
@@ -348,12 +380,17 @@ def somaticMod(parameters, args, defaults):
 						pvals.append(pval.two_tail)
 					else:
 						if (parameters['mutipleTestSum'] and len(goodNormalAlt) >= 1 and len(goodTumoralAlt) >= 1 and not(len(goodNormalAlt) == 1 and len(goodTumoralAlt) == 1)): #Perform the sum of alternative frequencies in order to be in the case of an 2*2 contingency table -> fisher test
+							sumNormalFreq = 0
+							sumTumoralFreq = 0
 							for i in range(2, len(goodNormalAlt)):
 								goodNormalCountAlt += int(round(float(goodNormalFreq[i]) * int(goodNormal.totCount)) / 100)
+								sumNormalFreq += goodNormalFreq[i]
 							for i in range(2, len(goodTumoralAlt)):
 								goodTumoralCountAlt += int(round(float(goodTumoralFreq[i]) * int(goodTumoral.totCount)) / 100)
+								sumTumoralFreq
 							pval = fisher(goodNormalCountRef, goodTumoralCountRef, goodNormalCountAlt, goodTumoralCountAlt)
 							pvals.append(pval.two_tail)
+							print "{} {}".format(sumNormalFreq, sumTumoralFreq)
 						else: 
 							if (not(parameters['mutipleTestSum']) and len(goodNormalAlt) >= 1 and len(goodTumoralAlt) >= 1 and not(len(goodNormalAlt) == 1 and len(goodTumoralAlt) == 1)): # Compute fisher test for a table greater than 2*2 (need R)
 								#Compare variants in Normal and tumoral to deduce the size of the n * m contingency table
@@ -389,7 +426,7 @@ def somaticMod(parameters, args, defaults):
 									res = stats.fisher_test(m)
 									pvals.append(res[0][0])
 
-		if(not(booleanHaveHomolog)): #The tumoral variant has no homolog in the normal dataset -> which mean that the normal allele is the same as reference 
+		if(not(booleanHaveHomolog)): #The tumoral variant has no homolog in the normal dataset -> which mean that the normal allele is the same as reference # or maybe in Trash
 			pvalsCorrespondingChr.append(goodTumoral.chr)
 			pvalsCorrespondingStart.append(goodTumoral.start)
 			pvalsCorrespondingRef.append(goodTumoral.reference)
@@ -402,7 +439,12 @@ def somaticMod(parameters, args, defaults):
 			#Get back the normal coverage which is depthProfileNormal (not del)
 			depthProfileNormalFields = str(depthProfileNormal.depthProfile[goodTumoral.chr][goodTumoral.start]).split('\t')
 			goodNormalCountRef = int(depthProfileNormalFields[2])
-			pvalsCorrespondingAltNormal.append(depthProfileNormalFields[3])
+		#	pvalsCorrespondingAltNormal.append(depthProfileNormalFields[3])
+
+			if(len(goodTumoral.reference) > len(goodTumoral.alt)): # To avoid case with ref = GA and altT = G, if no mutation in normal then altN = G whereas it must be altN = GA
+				pvalsCorrespondingAltNormal.append(goodTumoral.reference)
+			else:
+				pvalsCorrespondingAltNormal.append(depthProfileNormalFields[3])
 
 			goodNormalCountAlt = 0
 			goodTumoralCountRef = int(round(float(goodTumoralFreq[0]) * int(goodTumoral.totCount)) / 100)
@@ -440,7 +482,9 @@ def somaticMod(parameters, args, defaults):
 							unionNucFreqList.append(normalNucFreqList[i])
 							unionNucFreqList.append(tumoralNucFreqList[i])
 						if(sum(normalNucFreqList+tumoralNucFreqList) == 0):
-							#print("Pos {} Tref {} Talt {}".format(goodTumoral.start,goodTumoral.reference,goodTumoral.alt))
+							#pvalsTypes.pop()
+							#pvalsTypes.append("N.Filtered")
+						#	print("Pos {} Tref {} Talt {}".format(goodTumoral.start,goodTumoral.reference,goodTumoral.alt))
 							pvals.append(1)
 						else:
 							#Use R because fiher exact test does not exist in python for contingency tables greater than 2*2
