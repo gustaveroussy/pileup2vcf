@@ -54,7 +54,7 @@ class MPileup(object):
 
     # Fonction permettant de parser le fichier mpileup et de définir pour chaque ligne un objet variant. Cet objet est ammené à être callé ou non lors de l'étape
     # getFilterState. Si passFilter = cur.getFilterState() = True, alors on a affaire à un variant.
-    def parse(self,depthProfileKeepInMemory, depthProfileBinDynamically):
+    def parse(self, printDepthProfile, depthProfileKeepInMemory, depthProfileBinDynamically):
         '''This takes as input the mpileup file and parses it. It has disparate functions, but this is the data provider function.
         * Returns: self.arrayPileup
         '''
@@ -90,7 +90,7 @@ class MPileup(object):
                 #print "Unsequenced region at {}-{}".format(chr, pos)
                 continue
             if not chr in avancement:
-                self.dph.walk(Chromosome=chr)
+                self.dph.walk(Chromosome=chr,printDepthProfile=printDepthProfile)
                 avancement.append(chr)
                 before = elem[1]
                 self.log("Parsing and calling on {0}".format(chr))
@@ -117,17 +117,19 @@ class MPileup(object):
             # A ce stade, on enregistre tous les objets variants en se basant uniquement sur la présence éventuelle d'un nucléotide non ref. Le problème de cette méthode est qu'elle
             # peut entrainer beaucoup de variants selon la qualité du séquençage...
             # On verra bien ce que cela donne. L'étape suivante est
-        self.dph.writeDepthProfile(depthProfileKeepInMemory, depthProfileBinDynamically) # We write the last positions in depthProfile before returning
+        self.dph.writeDepthProfile(printDepthProfile, depthProfileKeepInMemory, depthProfileBinDynamically) # We write the last positions in depthProfile before returning
         self.log("Skipped {} positions as they were not in Bed.".format(skipped), loglevel=2)
         return UnclassifiedVariantCollection(self.arrayPileup, self.parameters)
 
     # Calcul du windowK pendant la lecture du fichier mpileup 
     # Fonction permettant de parser le fichier mpileup et de définir pour chaque ligne un objet variant. Cet objet est ammené à être callé ou non lors de l'étape
     # getFilterState. Si passFilter = cur.getFilterState() = True, alors on a affaire à un variant.
-    def parseAndWindowK(self,depthProfileKeepInMemory, depthProfileBinDynamically, fh_cov, fh_group, k, n, printHeaderWindowK):
+    def parseAndWindowK(self, printDepthProfile, depthProfileKeepInMemory, depthProfileBinDynamically, fh_cov, fh_group, k, n, printHeaderWindowK):
         '''This takes as input the mpileup file and parses it. It has disparate functions, but this is the data provider function.
         * Returns: self.arrayPileup
-        * Write: windowK file for all the mpileup
+        * Set: cur.globalFilter, cur.clusterGP
+        * Write: *.cov.bed (bed of segments(=replace variant position by segment of size k) according the coverage)
+        * Write: *.group (equivalence between clusterID and variant positions included in this cluster)
         '''
         if (printHeaderWindowK):
             print >>fh_cov, "#Chromosome\tStartWindow\tEndWindow\tClusterID\tCoverage\tLocationVariantID"
@@ -197,6 +199,11 @@ class MPileup(object):
                 #print cur
                 self.arrayPileup.append(cur)
                 ########windowK printing
+                '''This part compute the SNP cluster when parsing the mplieup. A moving window of size k allow to regroup variants on cluster. Variants clustered in groups of more than n, must be filtered
+                * Set: cur.globalFilter, cur.clusterGP
+                * Write: *.cov.bed (bed of segments(=replace variant position by segment of size k) according the coverage)
+                * Write: *.group (equivalence between clusterID and variant positions included in this cluster)
+        '''
                 if(len(lastStops)+len(lastStarts) == 0): # Si c'est le premier élément à ajouter
                     lastChr = chr
                     lastStarts.append(int(pos-k/2))
@@ -294,6 +301,6 @@ class MPileup(object):
             # A ce stade, on enregistre tous les objets variants en se basant uniquement sur la présence éventuelle d'un nucléotide non ref. Le problème de cette méthode est qu'elle
             # peut entrainer beaucoup de variants selon la qualité du séquençage...
             # On verra bien ce que cela donne. L'étape suivante est
-        self.dph.writeDepthProfile(depthProfileKeepInMemory, depthProfileBinDynamically) # We write the last positions in depthProfile before returning
+        self.dph.writeDepthProfile(printDepthProfile,depthProfileKeepInMemory, depthProfileBinDynamically) # We write the last positions in depthProfile before returning
         self.log("Skipped {} positions as they were not in Bed.".format(skipped), loglevel=2)
         return UnclassifiedVariantCollection(self.arrayPileup, self.parameters)

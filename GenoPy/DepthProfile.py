@@ -51,32 +51,33 @@ class DepthProfile(object):
         self.wroteHeader = False
         self.io = io
 
-    def writeDepthProfile(self, keepInMemory, binDynamically):
-        '''Method that dumps depthProfile data
+    def writeDepthProfile(self, printDepthProfile, keepInMemory, binDynamically):
+        '''Method that print and/or dumps depthProfile data
         
-        This method is intended to dump DepthProfile data. It can do so in different ways:
+        This method is intended to print and/or dump DepthProfile data. It can do so in different ways:
             - if binDynamically is True: it will call the binDynamically.bin bound method
             - if binDynamically is False: it will print Position objects to a filehandler (self.dph)
         # TODO: inspect arguments of this function (keepInMemory is weird)
         
-        * Input: <bool> keepInMemory, <bool> binDynamically'''
+        * Input: <bool> printDepthProfile, <bool> keepInMemory, <bool> binDynamically'''
         fh = self.dph
         header = self.wroteHeader
-        if not header and not keepInMemory:
+        if not header and printDepthProfile:
             print >>fh, "##Pileup2VCF - DepthProfile - v1.1"
             print >>fh, "#Chromosome\tStart\tDepth\trefNuc\tlast_position\tinBed\tquality\tmapQual\tavgQuality\tavgMapQuality\tnbAltPassFilter\tnbAltFiltered\tnbTotalAlt\tid"
             self.wroteHeader = True
         if binDynamically is not False:
             print 'Binning'
             binDynamically.bin(self.depthProfile, binDynamically=True)
-        if not keepInMemory:
+        if printDepthProfile:
             for k, v in self.depthProfile.items():
                 for v2 in v.values():
                     print >>fh, str(v2)
             fh.flush()
             self.io.log("Reseting DepthProfile", loglevel=3)
-            del self.depthProfile
-            self.depthProfile = OrderedDict()
+            if not keepInMemory:
+                del self.depthProfile
+                self.depthProfile = OrderedDict()
         
 
     def add(self, chromosome, position, PositionObject):
@@ -85,11 +86,11 @@ class DepthProfile(object):
         * Input: <str> chromosome, <int> position, <Position-like> PositionObject'''
         self.depthProfile[chromosome][position] = PositionObject
 
-    def walk(self, Chromosome=None, keepInMemory=False, binDynamically=False):
+    def walk(self, Chromosome=None, printDepthProfile=False, keepInMemory=False, binDynamically=False):
         '''This method allows for calling data dump method and creating new OrderedDict upon chromosome change
         
         * Input: <str> Chromsome, <bool> keepInMemory, <bool> binDynamically'''
-        self.writeDepthProfile(keepInMemory=keepInMemory, binDynamically=binDynamically)
+        self.writeDepthProfile(printDepthProfile=printDepthProfile, keepInMemory=keepInMemory, binDynamically=binDynamically)
         if Chromosome is not None:
             self.depthProfile[Chromosome] = OrderedDict()
 

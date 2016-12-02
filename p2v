@@ -200,8 +200,11 @@ else:
 
 #For moving window
 if(args.windowKGood or args.windowKAll):
+    if(args.windowKGood and args.windowKAll):
+        print "[Error] Can't set both of --windowKAll and --windowKGood in the same time because the SNP cluster group of each variant for --windowKAll will be replace by the one for --windowKGood. Please use only one of these 2 arguments."
+        sys.exit()
     if(int(args.sizeK) % 2 != 0 or int(args.sizeK) < 0):
-        print "[Error] --SizeK argument must be a pair and positive integer"
+        print "[Error] --SizeK argument must be a pair and positive integer. Please try again."
 	sys.exit()
     else:
         parameters['sizeK'] = 100 if args.sizeK is None else int(args.sizeK)
@@ -278,11 +281,11 @@ if (parameters['somatic'] == False):
 	if(args.windowKAll):
 		io.register("WindowKAllCov", parameters['prefix'] + ".All.WindowK.cov.bed", "w") #Fichier pour la couverture
 		io.register("WindowKAllGroup", parameters['prefix'] + ".All.WindowK.group", "w") #Fichier pour l'équivalence des groupes 
-		unclassified_variants = pileup.parseAndWindowK(False, False, io.getIO('WindowKAllCov'), io.getIO('WindowKAllGroup'), parameters['sizeK'], parameters['clusterN'], True)
+		unclassified_variants = pileup.parseAndWindowK(True,False, False, io.getIO('WindowKAllCov'), io.getIO('WindowKAllGroup'), parameters['sizeK'], parameters['clusterN'], True)
 		io.giveupIO('WindowKAllCov')
 		io.giveupIO('WindowKAllGroup')
 	else:
-		unclassified_variants = pileup.parse(False,False)
+		unclassified_variants = pileup.parse(True,False,False)
 	good, trashed = unclassified_variants.classify_variants().getCollections()
 
 	AllCollections = AllClassifiedVariantCollections(parameters)

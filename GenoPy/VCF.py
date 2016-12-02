@@ -166,6 +166,11 @@ class VCF(object):
 
     #Fonction de calculer le nombre de SNP inclus dans une fenetre de taille k (paramétrable)
     def printWindowK(self, fh_cov, fh_group, k, printHeader=False):
+        '''Prints 2 WindowK file using variant in collections. Use only with variants from good.
+        * Set: cur.globalFilter, cur.clusterGP
+        * Write: *.cov.bed (bed of segments(=replace variant position by segment of size k) according the coverage)
+        * Write: *.group (equivalence between clusterID and variant positions included in this cluster)
+        '''
         if (printHeader):
             print >>fh_cov, "#Chromosome\tStartWindow\tEndWindow\tClusterID\tCoverage\tLocationVariantID"
             print >>fh_group, "#ClusterID\tLocationVariantID"
