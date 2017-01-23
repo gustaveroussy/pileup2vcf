@@ -33,10 +33,9 @@ from GenoPy.Bins import *
 from GenoPy.VCF import *
 import gc
 from statsmodels.stats.multitest import multipletests
-import rpy2.robjects as robjects
-from rpy2.robjects.packages import importr
-stats = importr('stats')
-
+#import rpy2.robjects as robjects
+#from rpy2.robjects.packages import importr
+#stats = importr('stats')
 
 def somaticMod(parameters, args, defaults):
     '''This takes as input the parameters, the arguments and the default parameters to compute the somatic mod.
@@ -44,9 +43,9 @@ def somaticMod(parameters, args, defaults):
     * Compute: for the normal mpileup
     * Compare: variants between tumoral and normal
     '''
-    tumoralProceed(parameters, args, defaults)
-    NormalProceed(parameters, args, defaults)
-    comparing(parameters, args, defaults)
+    goodVCFTumoral,depthProfileTumoral = tumoralProceed(parameters, args, defaults)
+    goodVCFNormal,depthProfileNormal = NormalProceed(parameters, args, defaults)
+    comparing(parameters, args, defaults, goodVCFTumoral, depthProfileTumoral, goodVCFNormal, depthProfileNormal)
 
 
 def tumoralProceed(parameters, args, defaults):
@@ -181,7 +180,7 @@ def tumoralProceed(parameters, args, defaults):
     del stath
     del indels
     del allIndels
-    del depthProfileTumoral
+    #del depthProfileTumoral
     del readDepthProfile
     del binningW
     del binning
@@ -191,6 +190,7 @@ def tumoralProceed(parameters, args, defaults):
     del AllCollections
     del trashVCFTumoral
     gc.collect()
+    return(goodVCFTumoral, depthProfileTumoral)
 
 ##########
 
@@ -335,9 +335,10 @@ def NormalProceed(parameters, args, defaults):
     del trashed
     del AllCollections
     gc.collect()
+    return(goodVCFNormal, depthProfileNormal)
 
 
-def comparing(parameters, args, defaults):
+def comparing(parameters, args, defaults, goodVCFTumoral, depthProfileTumoral, goodVCFNormal, depthProfileNormal):
     '''This takes as input the parameters, the arguments and the default parameters to compare results from the tumoral and the normal variant analyses.
     This fonction gets back variant depthProfiles for both tumoral and normal analyses.
     These counts are compared using a fisher test on the corresponding contingency table.
@@ -406,7 +407,7 @@ def comparing(parameters, args, defaults):
                         pval = fisher(goodNormalCountRef, goodTumoralCountRef, goodNormalCountAlt, goodTumoralCountAlt)
                         pvals.append(pval.two_tail)
                     else:
-                        if (parameters['mutipleTestSum'] and len(goodNormalAlt) >= 1 and len(goodTumoralAlt) >= 1 and not(len(goodNormalAlt) == 1 and len(goodTumoralAlt) == 1)): #Perform the sum of alternative frequencies in order to be in the case of an 2*2 contingency table -> fisher test
+                        if (len(goodNormalAlt) >= 1 and len(goodTumoralAlt) >= 1 and not(len(goodNormalAlt) == 1 and len(goodTumoralAlt) == 1)): #Perform the sum of alternative frequencies in order to be in the case of an 2*2 contingency table -> fisher test
                             sumNormalFreq = 0
                             sumTumoralFreq = 0
                             for i in range(2, len(goodNormalAlt)):
@@ -417,41 +418,41 @@ def comparing(parameters, args, defaults):
                                 sumTumoralFreq
                             pval = fisher(goodNormalCountRef, goodTumoralCountRef, goodNormalCountAlt, goodTumoralCountAlt)
                             pvals.append(pval.two_tail)
-#                            print "{} {}".format(sumNormalFreq, sumTumoralFreq)
-                        else: 
-                            if (not(parameters['mutipleTestSum']) and len(goodNormalAlt) >= 1 and len(goodTumoralAlt) >= 1 and not(len(goodNormalAlt) == 1 and len(goodTumoralAlt) == 1)): # Compute fisher test for a table greater than 2*2 (need R)
+                            print "{} {}".format(sumNormalFreq, sumTumoralFreq)
+#                        else: 
+#                            if (len(goodNormalAlt) >= 1 and len(goodTumoralAlt) >= 1 and not(len(goodNormalAlt) == 1 and len(goodTumoralAlt) == 1)): # Compute fisher test for a table greater than 2*2 (need R)
                                 #Compare variants in Normal and tumoral to deduce the size of the n * m contingency table
-                                normalNucList = list(goodNormal.reference) + goodNormalAlt
-                                tumoralNucList = list(goodTumoral.reference) + goodTumoralAlt
-                                unionNucList = set(normalNucList) | set(tumoralNucList)
-                                normalNucFreqList = []
-                                tumoralNucFreqList = []
-                                i = 0
-                                for unionNuc in unionNucList:
-                                    normalNucFreqList.append(0)
-                                    tumoralNucFreqList.append(0)
-                                    for j in range(0, len(goodNormalFreq)):
-                                        if(unionNuc == normalNucList[j]):
-                                            normalNucFreqList[i] = int(round(float(goodNormalFreq[j]) * int(goodNormal.totCount) / 100))
-
-                                    for j in range(0, len(goodTumoralFreq)):
-                                        if(unionNuc == tumoralNucList[j]):
-                                            tumoralNucFreqList[i] = int(round(float(goodTumoralFreq[j]) * int(goodTumoral.totCount) / 100))
-                                    i += 1
-
-                                unionNucFreqList = []
-                                for i in range(0, len(unionNucList)):
-                                    unionNucFreqList.append(normalNucFreqList[i])
-                                    unionNucFreqList.append(tumoralNucFreqList[i])
-                                if(sum(normalNucFreqList+tumoralNucFreqList) == 0):
-                                    #print("Pos {} Tref {} Talt {}".format(goodTumoral.start,goodTumoral.reference,goodTumoral.alt))
-                                    pvals.append(1)
-                                else:
-                                    #Use R because fiher exact test does not exist in python for contingency tables greater than 2*2
-                                    v = robjects.IntVector(normalNucFreqList+tumoralNucFreqList)
-                                    m = robjects.r['matrix'](v,nrow=len(unionNucList))
-                                    res = stats.fisher_test(m)
-                                    pvals.append(res[0][0])
+#                                normalNucList = list(goodNormal.reference) + goodNormalAlt
+#                                tumoralNucList = list(goodTumoral.reference) + goodTumoralAlt
+#                                unionNucList = set(normalNucList) | set(tumoralNucList)
+#                                normalNucFreqList = []
+#                                tumoralNucFreqList = []
+#                                i = 0
+#                                for unionNuc in unionNucList:
+#                                    normalNucFreqList.append(0)
+#                                    tumoralNucFreqList.append(0)
+#                                    for j in range(0, len(goodNormalFreq)):
+#                                        if(unionNuc == normalNucList[j]):
+#                                            normalNucFreqList[i] = int(round(float(goodNormalFreq[j]) * int(goodNormal.totCount) / 100))
+#
+#                                    for j in range(0, len(goodTumoralFreq)):
+#                                        if(unionNuc == tumoralNucList[j]):
+#                                            tumoralNucFreqList[i] = int(round(float(goodTumoralFreq[j]) * int(goodTumoral.totCount) / 100))
+#                                    i += 1
+#
+#                                unionNucFreqList = []
+#                                for i in range(0, len(unionNucList)):
+#                                    unionNucFreqList.append(normalNucFreqList[i])
+#                                    unionNucFreqList.append(tumoralNucFreqList[i])
+#                                if(sum(normalNucFreqList+tumoralNucFreqList) == 0):
+#                                    #print("Pos {} Tref {} Talt {}".format(goodTumoral.start,goodTumoral.reference,goodTumoral.alt))
+#                                    pvals.append(1)
+#                                else:
+#                                    #Use R because fiher exact test does not exist in python for contingency tables greater than 2*2
+#                                    v = robjects.IntVector(normalNucFreqList+tumoralNucFreqList)
+#                                    m = robjects.r['matrix'](v,nrow=len(unionNucList))
+#                                    res = stats.fisher_test(m)
+#                                    pvals.append(res[0][0])
 
         if(not(booleanHaveHomolog)): #The tumoral variant has no homolog in the normal dataset -> which mean that the normal allele is the same as reference # or maybe in Trash
             pvalsCorrespondingChr.append(goodTumoral.chr)
@@ -482,43 +483,43 @@ def comparing(parameters, args, defaults):
                 pval = fisher(goodNormalCountRef, goodTumoralCountRef, goodNormalCountAlt, goodTumoralCountAlt)
                 pvals.append(pval.two_tail)
             else:
-                if (parameters['mutipleTestSum'] and len(goodTumoralAlt) > 1): #Perform the sum of alternative frequencies in order to be in the case of an 2*2 contingency table -> fisher test
+                if (len(goodTumoralAlt) > 1): #Perform the sum of alternative frequencies in order to be in the case of an 2*2 contingency table -> fisher test
                     for i in range(2, len(goodTumoralAlt)):
                         goodTumoralCountAlt += int(round(float(goodTumoralFreq[i]) * int(goodTumoral.totCount)) / 100)
                     pval = fisher(goodNormalCountRef, goodTumoralCountRef, goodNormalCountAlt, goodTumoralCountAlt)
                     pvals.append(pval.two_tail)
-                else: # Compute fisher test for a table greater than 2*2 (need R)
+#                else: # Compute fisher test for a table greater than 2*2 (need R)
                     #Compare variants in Normal and tumoral to deduce the size of the n * m contingency table
-                    if (not(parameters['mutipleTestSum']) and len(goodTumoralAlt) > 1):
-                        normalNucList = list(goodTumoral.reference)
-                        tumoralNucList = list(goodTumoral.reference) + goodTumoralAlt
-                        unionNucList = set(normalNucList) | set(tumoralNucList)
-                        normalNucFreqList = []
-                        tumoralNucFreqList = []
-                        i = 0
-                        for unionNuc in unionNucList:
-                            normalNucFreqList.append(0)
-                            tumoralNucFreqList.append(0)
+#                    if (not(parameters['mutipleTestSum']) and len(goodTumoralAlt) > 1):
+#                        normalNucList = list(goodTumoral.reference)
+#                        tumoralNucList = list(goodTumoral.reference) + goodTumoralAlt
+#                        unionNucList = set(normalNucList) | set(tumoralNucList)
+#                        normalNucFreqList = []
+#                        tumoralNucFreqList = []
+#                        i = 0
+#                        for unionNuc in unionNucList:
+#                            normalNucFreqList.append(0)
+#                            tumoralNucFreqList.append(0)
 
-                        for j in range(0, len(goodTumoralFreq)):
-                            if(unionNuc == tumoralNucList[j]):
-                                tumoralNucFreqList[i] = int(round(float(goodTumoralFreq[j]) * int(goodTumoral.totCount) / 100))
-                        i += 1
-                        unionNucFreqList = []
-                        for i in range(0, len(unionNucList)):
-                            unionNucFreqList.append(normalNucFreqList[i])
-                            unionNucFreqList.append(tumoralNucFreqList[i])
-                        if(sum(normalNucFreqList+tumoralNucFreqList) == 0):
+#                        for j in range(0, len(goodTumoralFreq)):
+#                            if(unionNuc == tumoralNucList[j]):
+#                                tumoralNucFreqList[i] = int(round(float(goodTumoralFreq[j]) * int(goodTumoral.totCount) / 100))
+#                        i += 1
+#                        unionNucFreqList = []
+#                        for i in range(0, len(unionNucList)):
+#                            unionNucFreqList.append(normalNucFreqList[i])
+#                            unionNucFreqList.append(tumoralNucFreqList[i])
+#                        if(sum(normalNucFreqList+tumoralNucFreqList) == 0):
                             #pvalsTypes.pop()
                             #pvalsTypes.append("N.Filtered")
                         #    print("Pos {} Tref {} Talt {}".format(goodTumoral.start,goodTumoral.reference,goodTumoral.alt))
-                            pvals.append(1)
-                        else:
-                            #Use R because fiher exact test does not exist in python for contingency tables greater than 2*2
-                            v = robjects.IntVector(normalNucFreqList+tumoralNucFreqList)
-                            m = robjects.r['matrix'](v,nrow=len(unionNucList))
-                            res = stats.fisher_test(m)
-                            pvals.append(res[0][0])
+#                            pvals.append(1)
+#                        else:
+#                            #Use R because fiher exact test does not exist in python for contingency tables greater than 2*2
+#                            v = robjects.IntVector(normalNucFreqList+tumoralNucFreqList)
+#                            m = robjects.r['matrix'](v,nrow=len(unionNucList))
+#                            res = stats.fisher_test(m)
+#                            pvals.append(res[0][0])
 
     #Multiple test correction according the given parameters
     if(parameters['methodFDR'] == "bonferroni"):

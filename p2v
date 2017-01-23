@@ -102,7 +102,7 @@ parser.add_argument("--inputNormal", dest="inputNormal", type=str, required=Fals
 parser.add_argument("--inputTumoral", dest="inputTumoral", type=str, required=False, help="Please input the mpileup Tumoral file")
 parser.add_argument("--methodFDR", dest="methodFDR", type=str, required=False, help="Choose between the FDR calculation method from : bonferroni, fdr_bh or fdr_tsbh [fdr_bh]")
 parser.add_argument("--alphaFDR", dest="alphaFDR", type=float, required=False, help="Set the alpha error for the multiple test correction [0.05]")
-parser.add_argument("--mutipleTestSum", dest="mutipleTestSum", default=True, action="store_false", required=False, help="If multiple alternatives their frquencies are add in order to compute the fisher exact test for 2*2 contingency table in all cases [True]")
+#parser.add_argument("--mutipleTestSum", dest="mutipleTestSum", default=True, action="store_false", required=False, help="If multiple alternatives their frquencies are add in order to compute the fisher exact test for 2*2 contingency table in all cases [True]")
 
 
 parser.add_argument('--windowKAll', dest="windowKAll", default=False, action="store_true", required=False, help="Moving window of size --kSize in order to compute the BED regions according to their coverage by all variants (all mpileup lines except lines without variants) and SNP cluster. Filter the variants having more than --clusterN others variants in a window of --sizeK. [False]")
@@ -216,7 +216,7 @@ parameters['inputNormal'] = args.inputNormal
 parameters['inputTumoral'] = args.inputTumoral
 parameters['methodFDR'] = "fdr_bh" if args.methodFDR is None else str(args.methodFDR)
 parameters['alphaFDR'] = 0.05 if args.alphaFDR is None else float(args.alphaFDR)
-parameters['mutipleTestSum'] = True if args.mutipleTestSum is None else False
+#parameters['mutipleTestSum'] = True if args.mutipleTestSum is None else False
 
 if (parameters['somatic'] == False):
 	parameters['prefix'] = args.prefix

@@ -24,8 +24,9 @@ make
 * matplotlib (this might require the installation of libpng-devel and freetype-devel)
 * biopython
 * pyfaidx
+* statsmodels
 
-Manuel Lebeurrier has reported that you should have gcc 4.9 in order to be able to install some of those libraries
+You should have gcc 4.9 in order to be able to install some of those libraries.
 
 For simple installation, use `pip install <dependency name>` 
 If not root: `pip install --user <dependency name>`
