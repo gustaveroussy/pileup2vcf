@@ -48,10 +48,12 @@ class UnclassifiedVariantCollection(object):
         self.varDic = defaultdict(bool)
         
 
-    def classify_variants(self):
+    def classify_variants(self,parseAndFilter):
         '''Here, we apply filtering, genotyping and all on all variants. Two VariantCollection are outputed. VCF object takes a VariantCollection and
-	a file handler as input to output VariantCollections to files'''
-        passFilter = [cur.getGlobalFilterState() for cur in self.col] # Apply global filters on variants
+        a file handler as input to output VariantCollections to files'''
+        if parseAndFilter == False:
+            print "OK"
+            passFilter = [cur.getGlobalFilterState() for cur in self.col] # Apply global filters on variants
         self.io.log("There are {} variant positions with no filtering or calling".format(len(self.col)), loglevel=2)
         if len(self.col) == 0:
             sys.exit(0)
@@ -72,8 +74,9 @@ class UnclassifiedVariantCollection(object):
         genotypeVariant method shouldn't be there I think, i will link it inside Variant'''
         self.counter += 1
         refAllele, goodAlleles, trashedAlleles = cur.call()
-        if cur.globalFilter != True: #Si le filtre global sur cluster SNP est completé alors globalFilter != True
+        if cur.globalFilter != "True": #Si le filtre global sur cluster SNP est completé alors globalFilter != "True"
             self.trash.add(cur)
+            #print "{}".format(cur)
         else:
             if goodAlleles is None and trashedAlleles is None:
                 return None
@@ -85,6 +88,7 @@ class UnclassifiedVariantCollection(object):
                 self.good.add(cur)
             else:
                 self.io.log('I do not understand', loglevel=1)
+        #print "{}".format(cur)
         varHash = '{}-{}'.format(cur.chr, cur.start)
         self.varDic[varHash] = (len(cur.goodAlleles), len(cur.trashedAlleles))
             
@@ -381,6 +385,8 @@ class Variant(NewPosition):
         # Champs de la qualité
         self.minReadQuality = 0
         self.minMappingQuality = 0
+        self.meanReadQuality = 0
+        self.meanMappingQuality = 0
 
         # Champs du groupe de cluster SNP
         self.clusterGP = 0
@@ -391,37 +397,37 @@ class Variant(NewPosition):
     #Retourne le nombre de reads possèdant une qualité de base supérieure au seuil
 #Sauvergarder le range de qualité ici (définir de manière globale)
     def computeMinReadQuality(self):
-	n = 0
+        n = 0
         for q in self.quality:
-                if (q < float(self.parameters['minReadQuality'])):
-                        n += 1
+            if (q > float(self.parameters['minReadQuality'])):
+                n += 1
+        self.minReadQuality = n
         return n
 
     #Retourne la moyenne de qualité des bases de reads
     def computeMeanReadQuality(self):
         meanReadQuality = 0
         for q in self.quality:
-                meanReadQuality += q
+            meanReadQuality += q
+        self.meanReadQuality = meanReadQuality/len(self.quality)
         return meanReadQuality/len(self.quality)
 
     #Retourne le nombre de reads possèdant une qualité d'alignement supérieure au seuil
 #Sauvergarder le range de qualité ici (définir de manière globale)
     def computeMinMappingQuality(self):
         n = 0
-	lengthMapQual = len(self.mapQual)
-        for q in range(1,lengthMapQual):
-                if (q < float(self.parameters['minMappingQuality'])):
+        for q in self.mapQual:
+                if (q > float(self.parameters['minMappingQuality'])):
                         n += 1
-        if (lengthMapQual-n > 0):
-                return 1
-        else:
-                return 0
+        self.minMappingQuality = n
+        return n
 
     #Retourne la moyenne de qualité des mapping de reads
     def computeMeanMappingQuality(self):
         meanMappingQuality = 0
         for q in self.mapQual:
-                meanMappingQuality += q
+            meanMappingQuality += q
+        self.meanMappingQuality = meanMappingQuality/len(self.mapQual)
         return meanMappingQuality/len(self.mapQual)
 
     def __str__(self):
@@ -442,14 +448,21 @@ class Variant(NewPosition):
         a.append('Pileup context')
         a.append('Sequence: ' + str(self.sequence))
         a.append('Quality: ' + str(self.quality))
+        a.append('MinReadQuality: ' + str(self.minReadQuality))
+        a.append('MinMappingQuality: ' + str(self.minMappingQuality))
+        a.append('MeanReadQuality: ' + str(self.meanReadQuality))
+        a.append('MeanMappingQuality: ' + str(self.meanMappingQualityquality))
         a.append('Depth: ' + str(self.depth))
         a.append('Other informations')
         a.append('Refcount: {0}, refAllele: {2}, Filtered: {1}'.format(self.refCount, self.filtered, self.refNuc))
-        try: a.append('Computed Depth: {}'.format(self.totCount))
-        except: a.append('Computed Depth: None')
+        try:
+            a.append('Computed Depth: {}'.format(self.totCount))
+        except:
+            a.append('Computed Depth: None')
         try:
             a.append('Called Allele: {0}'.format(self.calledAllele))
         except:
+            G=0
             a.append('Called Allele: None')
         try:
             a.append('Allele Depth | Frequency: {0} | {1}'.format(self.calledDepth, self.calledFrequency))
@@ -1151,11 +1164,11 @@ class Variant(NewPosition):
         fisherStrand = self.parameters['fisherStrand']
 
         self.computeFreq()
-        passFilter = True
+        passFilter = "True"
         self.failedGlobFilters = []
 #######################
-        if(self.globalFilter!=""):
-            self.failedGlobFilters.append(self.globalFilter)
+#        if(self.globalFilter!=""):
+#            self.failedGlobFilters.append(self.globalFilter)
 #######################
         if ((self.globalVarFreq == 0) or (int(self.totCount) == 0)):
             if (float(self.frequencies["del"]) == 0):
@@ -1168,19 +1181,19 @@ class Variant(NewPosition):
             self.failedGlobFilters.append("Global: DP < {0}".format(minDepth))
 
         MinReadQualityCov = self.computeMinReadQuality()
-        if (float(MinReadQualityCov) < float(format(self.parameters['minReadQualityCov']))):
+        if (MinReadQualityCov < float(self.parameters['minReadQualityCov'])):
             self.failedGlobFilters.append("Global: MinReadQuality < {0}".format(self.parameters['minReadQuality']))
 
         MeanReadQuality = self.computeMeanReadQuality()
-        if (float(MeanReadQuality) < float(format(self.parameters['meanReadQuality']))):
+        if (float(MeanReadQuality) < float(self.parameters['meanReadQuality'])):
             self.failedGlobFilters.append("Global: MeanReadQuality < {0}".format(self.parameters['meanReadQuality']))
 
         MinMappingQualityCov = self.computeMinMappingQuality()
-        if (float(MinMappingQualityCov) < float(format(self.parameters['minMappingQualityCov']))):
+        if (MinMappingQualityCov < float(self.parameters['minMappingQualityCov'])):
             self.failedGlobFilters.append("Global: MinMappingQuality < {0}".format(self.parameters['minMappingQuality']))       
 
         MeanMappingQuality = self.computeMeanMappingQuality()
-        if (float(MeanMappingQuality) < float(format(self.parameters['meanMappingQuality']))):
+        if (float(MeanMappingQuality) < float(self.parameters['meanMappingQuality'])):
             self.failedGlobFilters.append("Global: MeanMappingQuality < {0}".format(self.parameters['meanMappingQuality']))     
 
         self.sb = self.computeStrandBias()

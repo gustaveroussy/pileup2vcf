@@ -197,6 +197,7 @@ class AllDisengagements(object):
             # We get an iterator which goes like that: ((1, p1), (2, p2)). Enumerate is used in order to get a relative distance between events
             # so that we can distinguish closely detected events (1, 2 by instance) from more broadly detected events (1, 4 for instance, which means
             # there are two other events between those.
+            #if len(combs) < 400:
             for ((r1, p1), (r2, p2)) in combs:
                 # Get associated stack
                 #print ((r1, p1), (r2, p2))
