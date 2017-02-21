@@ -50,12 +50,13 @@ Until we choose a licence, please be advised that all rights are reserved.
 
 ## Contributors
 
-* Birama Ndiaye - 2015 & 2016 - Gustave Roussy
+* Manuel Lebeurrier - 2016 & 2017 - Gustave Roussy
+* Birama Ndiaye - 2015 - Gustave Roussy
 * Alec Guyomard - 2016 - Gustave Roussy
 * Jeremie Pagnac - 2015 - Gustave Roussy
 
 ## Licence
 
 Licence CeCILL => http://www.cecill.info/licences/Licence_CeCILL_V2.1-fr.txt
-Please report any bug to yannick.boursin@gustaveroussy.fr
+Please report any bug to yannick.boursin@gustaveroussy.fr (or fill a bug report on github of course)
 
