@@ -139,7 +139,6 @@ class MPileup(object):
         '''This takes as input the mpileup file and parses it. It has disparate functions, but this is the data provider function.
         * Returns: self.arrayPileup
         '''
-        print "beg parse"
         avancement = []
         alreadyPrinted = False
         lineCounter = 0

@@ -304,8 +304,6 @@ if (parameters['somatic'] == False):
 			io.giveupIO('WindowKSNPAllCov')
 			io.giveupIO('WindowKSNPAllGroup')
 		else:
-			print "WE ARE OK"
-			print "{}".format(parseAndFilter)
 			unclassified_variants = pileup.parse(True,False,False)
 	good, trashed = unclassified_variants.classify_variants(parseAndFilter).getCollections()
 
