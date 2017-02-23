@@ -315,29 +315,29 @@ if (parameters['somatic'] == False):
 
 
 	# We will parse depthProfile and write it again to integrate variants (sadly, I have no other choice)
-#	io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
-#	io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
+	io.register('depthProfileAddMutW', parameters['depthProfile'], "w")
+	io.register('depthProfileAddMutR', parameters['depthProfile'] + ".withoutMut", "r")
 
-#	depthProfile.addVariants(unclassified_variants)
+	depthProfile.addVariants(unclassified_variants)
 
-#	io.giveupIO('mpileup')
-#	io.unregister('depthProfileAddMutR')
-#	io.unregister('depthProfileAddMutW')
+	io.giveupIO('mpileup')
+	io.unregister('depthProfileAddMutR')
+	io.unregister('depthProfileAddMutW')
 
-#	io.register("depthProfileR1", parameters['depthProfile'], "r")
-#	io.register("depthProfileR2", parameters['depthProfile'], "r")
-#	indels = scanForIndels(parameters)
-#	allIndels = InDelDetector(indels)
-#	allIndels = allIndels.extract().genotype(parameters).getIndels()
-#	readDepthProfile = io.getIO('depthProfileR1')
-#	binningW = io.getIO('binningW')
-#	binning = Binning(binningW, parameters)
-#	binning.bin(readDepthProfile)
+	io.register("depthProfileR1", parameters['depthProfile'], "r")
+	io.register("depthProfileR2", parameters['depthProfile'], "r")
+	indels = scanForIndels(parameters)
+	allIndels = InDelDetector(indels)
+	allIndels = allIndels.extract().genotype(parameters).getIndels()
+	readDepthProfile = io.getIO('depthProfileR1')
+	binningW = io.getIO('binningW')
+	binning = Binning(binningW, parameters)
+	binning.bin(readDepthProfile)
 
 	#pileup.addIndelsToVCF()
-#	io.giveupIO('binningW')
-#	io.giveupIO('depthProfileR1')
-#	io.giveupIO('depthProfileR2')
+	io.giveupIO('binningW')
+	io.giveupIO('depthProfileR1')
+	io.giveupIO('depthProfileR2')
 
 	# Output des résultats.
 	# Binning
@@ -349,7 +349,7 @@ if (parameters['somatic'] == False):
 	#pileup.alternateBinningPrinting(binningR)
 
 	#indelsToAdd=allIndels
-	goodVCF = VCF(good, parameters, None)
+	goodVCF = VCF(good, parameters, allIndels)
 	if(args.windowKGood):
 		io.register("WindowKSNPGoodCov", parameters['prefix'] + ".GoodVariants.WindowKSNP.cov.bed", "w")
 		io.register("WindowKSNPGoodGroup", parameters['prefix'] + ".GoodVariants.WindowKSNP.group", "w")
@@ -361,7 +361,7 @@ if (parameters['somatic'] == False):
 	#pileup.printVCF(goodVariants)
 	io.giveupIO('GoodVariants')
 	#indelsToAdd=allIndels
-	trashVCF = VCF(trashed, parameters, None)
+	trashVCF = VCF(trashed, parameters, allIndels)
 	trashVCF.printVCF(io.getIO('TrashedVariants'), printHeader=True)
 	io.giveupIO('TrashedVariants')
 
