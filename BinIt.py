@@ -4,6 +4,11 @@
 #usage : cat My.mpileup | python BinIt.py -b My.bed --min-bin-size 0 --max-bin-size 50 -o My.ouput
 #usage : samtools mpileup -A -s -O -B -d 50000 -f <reference genome> <your bam file> | python BinIt.py -b My.bed --min-bin-size 0 --max-bin-size 50 -o My.ouput
 
+### BED file must be sort and without overlapping regions (see below to remove overlapping regions
+###cat /data/bioinfo/hg19/captureKitDesigns/Sureselect_v5.padded.bed | awk '{if(last_chr==$1){ if(last_end<$2){print last_chr"\t"last_beg"\t"last_end; last_chr=$1; last_beg=$2; last_end=$3} else{last_end=$3}}else{if(last_chr!=""){print last_chr"\t"last_beg"\t"last_end;} last_chr=$1; last_beg=$2; last_end=$3}} END{print last_chr"\t"last_beg"\t"last_end;}' > Sureselect_v5.padded_modif.bed
+###
+
+
 import sys
 import pyfaidx
 from collections import OrderedDict, deque, defaultdict
@@ -71,6 +76,42 @@ class Bed(object):
     def getOrderRegionsList(self):
         return self.order
 
+    def getBedAppartenance(self, o):
+        '''Checks whether a Genomic-like object is related to a region described in the bed objects.
+        Input: <Genomic-like>
+        Output: <str> id and <bool>True
+        Output: <None> and <bool>False
+
+        NB: Maintaining two different output shoudln't be really necessary, but I am waiting for the next release'''
+        chr, start, stop = str(o.chr), o.start, o.stop
+        #print self.cached if self.cache is not None
+        if self.cached is None:
+            if self.cache[chr] != []:
+                self.cached = self.cache[chr].pop()
+                #print self.cache[chr]
+            else:
+                self.cached = None
+                return None, False
+        #print self.cached
+        if o in self.cached:
+            return self.cached.id, True
+        else:
+            if (self.cache[chr] is False): return None, False
+            while start > self.cached.stop or chr != self.cached.chr:
+                # Elect new start
+                if (len(self.cache[chr]) == 1):
+                    self.cached = self.cache[chr].pop()
+                    self.cache[chr] = False
+                    break
+                if (len(self.cache[chr]) == 0):
+                    #print 'Why did you request any update ? Were still not in cache'
+                    return None, False
+                else:
+                    self.cached = self.cache[chr].pop()
+            if o in self.cached:
+                return self.cached.id, True
+            else: return None, False
+
 
 class MPileup(object):
     def __init__(self, io, parameters, bed):
@@ -113,17 +154,21 @@ class MPileup(object):
                 pos = int(elem[1].strip().rstrip('\n').rstrip('\t'))
                 refNuc = elem[2].strip().rstrip('\n').rstrip('\t').upper()
                 depth = int(elem[3].strip().rstrip('\n').rstrip('\t'))
-                sequence = elem[4].strip().rstrip('\n').rstrip('\t')
-                quality = elem[5].strip().rstrip('\n').rstrip('\t')
-                mapQual = elem[6].strip().rstrip('\n').rstrip('\t')
-                posInRead = elem[7].strip().rstrip('\n').rstrip('\t').split(',')
+                quality = "A"
+                mapQual = "A"
+                before = 1
+                #sequence = elem[4].strip().rstrip('\n').rstrip('\t')
+                #quality = elem[5].strip().rstrip('\n').rstrip('\t')
+                #mapQual = elem[6].strip().rstrip('\n').rstrip('\t')
+                #posInRead = elem[7].strip().rstrip('\n').rstrip('\t').split(',')
                 #print "MPileup locations", chr, pos, depth
             except:
                 print 'CrashDump:'
                 print line
                 print [len(x) for x in elem]
-                raise MpileupFormatError("Cannot initialize at line {}.\n Please check that your Mpileup file has 8 columns and has been generated with mapping quality and base position in read using samtools 0.1.18 (further versions seems to suffer from bugs).\n MPileup with good format might be generated using: samtools mpileup -A -s -O -B -f ../Pileup2VCF/hg19/hg19.fa 208204422-ADN-2_S2_L001.bam".format(lineCounter))
+                raise MpileupFormatError("Cannot initialize at line {}.\n Please check that your Mpileup file has 8 columns and has been generated with mapping quality and base position in read using samtools 0.1.18 (further versions seems to suffer from bugs).\n MPileup with good format might be generated using: samtools mpileup -A -s -O -B -d 50000 -f ../Pileup2VCF/hg19/hg19.fa 208204422-ADN-2_S2_L001.bam".format(lineCounter))
 
+            curPos = Position(chr, pos, quality, mapQual, depth, refNuc, pos_before=before, bed=self.bed)
             if bedRegions[index_bedRegions].chr == chr :
                 #If before the current bed regions, nothing to care so continue
                 if bedRegions[index_bedRegions].start > pos :
@@ -164,19 +209,23 @@ class MPileup(object):
                             boolPass2 = 1
                             boolPass3 = 0
                         index_bedRegions+=1
+                        delta = 0
                         if index_bedRegions == len(bedRegions):
                             sys.exit(io.unregister("all"))
                             sys.exit(0)
                         covList = []
                         if bedRegions[index_bedRegions].chr == chr and bedRegions[index_bedRegions].start <= pos and bedRegions[index_bedRegions].stop >= pos:
-                            covList.append(depth)
-                        delta = 0
+                            if curPos.inBed:
+                                if bedRegions[index_bedRegions].stop >= pos and bedRegions[index_bedRegions].start+delta >= pos:
+                                    covList.append(depth)
                     
                     #If we are in the current region
                     if bedRegions[index_bedRegions].stop >= pos :
                         #Perform bins before variant location
                         if bedRegions[index_bedRegions].start+delta == pos:
-                            covList.append(depth) 
+                            if curPos.inBed:
+                                covList.append(depth) 
+                                #print >>outBins, "PASS"
                         for i in range(bedRegions[index_bedRegions].start+delta, pos, parameters['maxBinSize']):
                             if i+parameters['maxBinSize']-1 < pos:
                                 if len(covList) :
@@ -192,10 +241,14 @@ class MPileup(object):
                                 boolPass3 = 1
                                 delta += parameters['maxBinSize']
                                 covList = []
-                                covList.append(depth)
+                                if curPos.inBed:
+                                    if bedRegions[index_bedRegions].stop >= pos and bedRegions[index_bedRegions].start+delta >= pos:
+                                        covList.append(depth)
+                                        #print >>outBins, "PASS"
                             else:
-                                covList.append(depth)
-                                #print "add"
+                                if curPos.inBed:
+                                    covList.append(depth)
+                                    #print "add"
 
 #get back IO                              
 io = IO(3)
