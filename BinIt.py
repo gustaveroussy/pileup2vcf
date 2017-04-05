@@ -3,8 +3,9 @@
 
 #usage : cat My.mpileup | python BinIt.py -b My.bed --min-bin-size 0 --max-bin-size 50 -o My.ouput
 #usage : samtools mpileup -A -s -O -B -d 50000 -f <reference genome> <your bam file> | python BinIt.py -b My.bed --min-bin-size 0 --max-bin-size 50 -o My.ouput
+# use /data/bioinfo/hg19/captureKitDesigns/Sureselect_v5.padded.order.collapse.bed
 
-### BED file must be sort and without overlapping regions (see below to remove overlapping regions
+### BED file must be sort and without overlapping regions (see below to remove overlapping regions) (chr1 chr2 chr3... chrX chrY)
 ###cat /data/bioinfo/hg19/captureKitDesigns/Sureselect_v5.padded.bed | awk '{if(last_chr==$1){ if(last_end<$2){print last_chr"\t"last_beg"\t"last_end; last_chr=$1; last_beg=$2; last_end=$3} else{last_end=$3}}else{if(last_chr!=""){print last_chr"\t"last_beg"\t"last_end;} last_chr=$1; last_beg=$2; last_end=$3}} END{print last_chr"\t"last_beg"\t"last_end;}' > Sureselect_v5.padded_modif.bed
 ###
 
@@ -134,7 +135,7 @@ class MPileup(object):
 
         #print "Current"
         index_bedRegions = 0
-        #print bedRegions[index_bedRegions].chr, bedRegions[index_bedRegions].start, bedRegions[index_bedRegions].stop
+        #print bedRegions[index_bedRegions].chr, bedRegioFns[index_bedRegions].start, bedRegions[index_bedRegions].stop
 
         #Coverage list, mean and size
         covList= []
@@ -169,6 +170,7 @@ class MPileup(object):
                 raise MpileupFormatError("Cannot initialize at line {}.\n Please check that your Mpileup file has 8 columns and has been generated with mapping quality and base position in read using samtools 0.1.18 (further versions seems to suffer from bugs).\n MPileup with good format might be generated using: samtools mpileup -A -s -O -B -d 50000 -f ../Pileup2VCF/hg19/hg19.fa 208204422-ADN-2_S2_L001.bam".format(lineCounter))
 
             curPos = Position(chr, pos, quality, mapQual, depth, refNuc, pos_before=before, bed=self.bed)
+            #if we are on the same chr
             if bedRegions[index_bedRegions].chr == chr :
                 #If before the current bed regions, nothing to care so continue
                 if bedRegions[index_bedRegions].start > pos :
@@ -249,6 +251,129 @@ class MPileup(object):
                                 if curPos.inBed:
                                     covList.append(depth)
                                     #print "add"
+            #if we are not on the same chr
+            else:
+                chrBEDnums = bedRegions[index_bedRegions].chr.split("chr")
+                chrPILnums = chr.split("chr")
+                if chrBEDnums[1] == "X":
+                    chrBEDnum = 23
+                if chrBEDnums[1] == "Y":
+                    chrBEDnum = 24
+                if chrPILnums[1] == "X":
+                    chrPILnum = 23
+                if chrPILnums[1] == "Y":
+                    chrPILnum = 24
+                if chrBEDnums[1] != "X" and chrBEDnums[1] != "Y":
+                    chrBEDnum = int(chrBEDnums[1])
+                if chrPILnums[1] != "X" and chrPILnums[1] != "Y":
+                    chrPILnum = int(chrPILnums[1])
+                while chrBEDnum < chrPILnum:
+                    for i in range(bedRegions[index_bedRegions].start+delta, bedRegions[index_bedRegions].stop-parameters['maxBinSize']+1, parameters['maxBinSize']):
+                        if i+parameters['maxBinSize']-1 < pos:
+                            if len(covList) > 0 :
+                                covListSize = len(covList)
+                                covListMean = numpy.mean(covList)
+                            else:
+                                covListSize = 0
+                                covListMean = 0
+                            #print bedRegions[index_bedRegions].chr, i, i+parameters['maxBinSize']-1, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 1"
+                            print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS1".format(bedRegions[index_bedRegions].chr, i, i+parameters['maxBinSize']-1, covListSize, covListMean)
+                            covList = []
+                            #delta += parameters['maxBinSize']
+                            boolPass1 = 1
+                            boolPass2 = 0
+                            boolPass3 = 0
+                                
+                    if parameters['minBinSize'] < bedRegions[index_bedRegions].stop-i+parameters['maxBinSize']-1:
+                        if len(covList) > 0 :
+                            covListSize = len(covList)
+                            covListMean = numpy.mean(covList)
+                        else:
+                            covListSize = 0
+                            covListMean = 0
+                        if boolPass1 == 0:
+                            #print bedRegions[index_bedRegions].chr, i, bedRegions[index_bedRegions].stop, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 2"
+                            print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS2.0".format(bedRegions[index_bedRegions].chr, i, bedRegions[index_bedRegions].stop, covListSize, covListMean)
+                        else:
+                            #print bedRegions[index_bedRegions].chr, i+parameters['maxBinSize']-1, bedRegions[index_bedRegions].stop, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 2"
+                            print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS2.1".format(bedRegions[index_bedRegions].chr, i+parameters['maxBinSize'], bedRegions[index_bedRegions].stop, covListSize, covListMean)
+                        boolPass1 = 0
+                        boolPass2 = 1
+                        boolPass3 = 0
+                    index_bedRegions+=1
+                    delta = 0
+                    if index_bedRegions == len(bedRegions):
+                        sys.exit(io.unregister("all"))
+                        sys.exit(0)
+                    covList = []
+                    if bedRegions[index_bedRegions].chr == chr and bedRegions[index_bedRegions].start <= pos and bedRegions[index_bedRegions].stop >= pos:
+                        if curPos.inBed:
+                            if bedRegions[index_bedRegions].stop >= pos and bedRegions[index_bedRegions].start+delta >= pos:
+                                covList.append(depth)
+                                
+                    index_bedRegions += 1
+                    chrBEDnums = bedRegions[index_bedRegions].chr.split("chr")
+                    chrPILnums = chr.split("chr")
+                    if chrBEDnums[1] == "X":
+                        chrBEDnum = 23
+                    if chrBEDnums[1] == "Y":
+                        chrBEDnum = 24
+                    if chrPILnums[1] == "X":
+                        chrPILnum = 23
+                    if chrPILnums[1] == "Y":
+                        chrPILnum = 24
+                    if chrBEDnums[1] != "X" and chrBEDnums[1] != "Y":
+                        chrBEDnum = int(chrBEDnums[1])
+                    if chrPILnums[1] != "X" and chrPILnums[1] != "Y":
+                        chrPILnum = int(chrPILnums[1])
+
+
+        while index_bedRegions < len(bedRegions):
+            for i in range(bedRegions[index_bedRegions].start+delta, bedRegions[index_bedRegions].stop-parameters['maxBinSize']+1, parameters['maxBinSize']):
+                if i+parameters['maxBinSize']-1 < pos:
+                    if len(covList) > 0 :
+                        covListSize = len(covList)
+                        covListMean = numpy.mean(covList)
+                    else:
+                        covListSize = 0
+                        covListMean = 0
+                    #print bedRegions[index_bedRegions].chr, i, i+parameters['maxBinSize']-1, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 1"
+                    print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS1".format(bedRegions[index_bedRegions].chr, i, i+parameters['maxBinSize']-1, covListSize, covListMean)
+                    covList = []
+                    #delta += parameters['maxBinSize']
+                    boolPass1 = 1
+                    boolPass2 = 0
+                    boolPass3 = 0
+                                
+            if parameters['minBinSize'] < bedRegions[index_bedRegions].stop-i+parameters['maxBinSize']-1:
+                if len(covList) > 0 :
+                    covListSize = len(covList)
+                    covListMean = numpy.mean(covList)
+                else:
+                    covListSize = 0
+                    covListMean = 0
+                if boolPass1 == 0:
+                    #print bedRegions[index_bedRegions].chr, i, bedRegions[index_bedRegions].stop, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 2"
+                    print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS2.0".format(bedRegions[index_bedRegions].chr, i, bedRegions[index_bedRegions].stop, covListSize, covListMean)
+                else:
+                    #print bedRegions[index_bedRegions].chr, i+parameters['maxBinSize']-1, bedRegions[index_bedRegions].stop, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 2"
+                    print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS2.1".format(bedRegions[index_bedRegions].chr, i+parameters['maxBinSize'], bedRegions[index_bedRegions].stop, covListSize, covListMean)
+                boolPass1 = 0
+                boolPass2 = 1
+                boolPass3 = 0
+            index_bedRegions+=1
+            delta = 0
+#        #print last bin (only this one i hope)
+#        if i+parameters['maxBinSize']-1 == pos:
+#            if len(covList) :
+#                covListSize = len(covList)
+#                covListMean = numpy.mean(covList)
+#            else:
+#                covListSize = 0
+#                covListMean = 0
+#            #print bedRegions[index_bedRegions].chr, i, i+parameters['maxBinSize']-1, 0, covListSize, covListMean, numpy.mean(covList), covList, "PASS 3"
+#            print >>outBins, "{}\t{}\t{}\t{}\t{}\tPASS3".format(bedRegions[index_bedRegions].chr, i, i+parameters['maxBinSize']-1, covListSize, covListMean)
+
 
 #get back IO                              
 io = IO(3)
